@@ -4,6 +4,7 @@
  */
 #include <cassert>
 #include <memory>
+#include <tuple>
 #include <unordered_map>
 
 // FIXME: Maybe move to different namespace?
@@ -32,8 +33,10 @@ template <typename K, typename V> struct LRULink {
       : key{k}, value{std::move(v)}, prev{NULL}, next{NULL} {}
   // No copy constructor.
   LRULink(const LRULink &) = delete;
-  // No assignment.[
+  // No assignment.
   LRULink operator=(const LRULink &) = delete;
+  // Yes move
+  LRULink(LRULink &&) = default;
 };
 
 // The actual LRU link list. Elements enter by being inserted at the head
@@ -118,5 +121,85 @@ private:
   LRULink<K, V> *_head;
   LRULink<K, V> *_tail;
   size_t _length;
+};
+
+// An LRU cache of fixed size.
+template <typename K, typename V> class LRUCache {
+public:
+  LRUCache(size_t size)
+      : _max_size{size}, _current_size{0}, _access_list{}, _access_map{} {}
+
+  // Get element from the cache. If found bumps the element up in the LRU list.
+  std::shared_ptr<V> get_element(const K &key) {
+    auto elt = _access_map.find(key);
+    if (elt != _access_map.end()) {
+      _access_list.move_to_head(&elt->second);
+      return elt->second.value;
+    } else {
+      return nullptr;
+    }
+  }
+
+  // Insert element into cache without eviction.
+  // If the same key is used then we replace the value.
+  inline void add_to_cache_no_evict(K key, std::shared_ptr<V> value) {
+    // FIXME Maybe move to C++17 where structured binding makes this more
+    // pleasant.
+    auto emplaced = _access_map.emplace(
+        std::make_pair(key, std::move(LRULink<K, V>(key, value))));
+    if (emplaced.second) {
+      _access_list.insert_head(&emplaced.first->second);
+      _current_size++;
+    } else {
+      _access_list.move_to_head(&emplaced.first->second);
+      emplaced.first->second.value = value;
+    }
+  }
+
+  // Insert element into the cache. Might evict a cache element if necessary.
+  // If the same key is used then we replace the value.
+  // Returns set pf nodes removed.
+  size_t add_to_cache(K key, std::shared_ptr<V> value) {
+    // FIXME: Should input be shared_ptr? Not so sure. Revisit.
+    // FIXME: For now we use number of elements a size, but we can easily use
+    // size of value. Not sure which is preferable, or if we should take a
+    // function in the template for this?
+    // FIXME: Need to notify on eviction, this is something that the ghost
+    // lists need. Alternately the no_evict form is enough?
+    size_t ret = 0;
+    add_to_cache_no_evict(key, value);
+    assert(_current_size == _access_map.size());
+    while (_current_size > _max_size) {
+      LRULink<K, V> *remove = _access_list.remove_tail();
+      size_t removed = _access_map.erase(remove->key);
+      // We should have no more than one element with the key.
+      assert(removed == 1);
+      _current_size--;
+      ret++;
+    }
+    return ret;
+  }
+
+  // Increase the maximum cache size.
+  void increase_size(size_t delta) { _max_size += delta; }
+
+  // Decrease the maximum cache size.
+  void decrease_size(size_t delta) { _max_size -= delta; }
+
+  size_t current_size() const {
+    assert(_current_size == _access_map.size());
+    return _current_size;
+  }
+
+  // FIXME: Do we want a default size?
+  LRUCache() = delete;
+  LRUCache(const LRUCache &) = delete;
+  LRUCache operator=(const LRUCache &) = delete;
+
+private:
+  size_t _max_size;
+  size_t _current_size;
+  LRUList<K, V> _access_list;
+  std::unordered_map<K, LRULink<K, V>> _access_map;
 };
 } // namespace cache
