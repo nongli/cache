@@ -123,11 +123,21 @@ private:
   size_t _length;
 };
 
+template <typename V> class ElementCount {
+public:
+  ElementCount() {}
+  ElementCount(const ElementCount &) = default;
+  ElementCount(ElementCount &&) = default;
+  inline size_t operator()(const V &) const { return 1; }
+};
+
 // An LRU cache of fixed size.
-template <typename K, typename V> class LRUCache {
+template <typename K, typename V, typename VSize = ElementCount<V>>
+class LRUCache {
 public:
   LRUCache(size_t size)
-      : _max_size{size}, _current_size{0}, _access_list{}, _access_map{} {}
+      : _max_size{size}, _current_size{0}, _access_list{},
+        _access_map{}, _count{} {}
 
   // Get element from the cache. If found bumps the element up in the LRU list.
   std::shared_ptr<V> get_element(const K &key) {
@@ -149,10 +159,12 @@ public:
         std::make_pair(key, std::move(LRULink<K, V>(key, value))));
     if (emplaced.second) {
       _access_list.insert_head(&emplaced.first->second);
-      _current_size++;
+      _current_size += _count(*value);
     } else {
       _access_list.move_to_head(&emplaced.first->second);
+      _current_size -= _count(*(emplaced.first->second.value));
       emplaced.first->second.value = value;
+      _current_size += _count(*value);
     }
   }
 
@@ -161,9 +173,6 @@ public:
   // Returns set pf nodes removed.
   size_t add_to_cache(K key, std::shared_ptr<V> value) {
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
-    // FIXME: For now we use number of elements a size, but we can easily use
-    // size of value. Not sure which is preferable, or if we should take a
-    // function in the template for this?
     // FIXME: Need to notify on eviction, this is something that the ghost
     // lists need. Alternately the no_evict form is enough?
     size_t ret = 0;
@@ -174,7 +183,7 @@ public:
       size_t removed = _access_map.erase(remove->key);
       // We should have no more than one element with the key.
       assert(removed == 1);
-      _current_size--;
+      _current_size -= _count(*remove->value);
       ret++;
     }
     return ret;
@@ -201,5 +210,6 @@ private:
   size_t _current_size;
   LRUList<K, V> _access_list;
   std::unordered_map<K, LRULink<K, V>> _access_map;
+  ElementCount<V> _count;
 };
 } // namespace cache

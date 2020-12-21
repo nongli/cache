@@ -5,4 +5,4 @@ FUNCTION(ADD_SIMPLE_TEST TEST SRC)
 ENDFUNCTION()
 
 ADD_SIMPLE_TEST(example-test example-test.cc)
-ADD_SIMPLE_TEST(lru-test example-test.cc)
+ADD_SIMPLE_TEST(lru-test lru-test.cc)
