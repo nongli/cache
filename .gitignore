@@ -1,0 +1,53 @@
+*~
+*.pyc
+.*.swp
+cscope.files
+cscope.out
+cscope.in.out
+cscope.po.out
+org.eclipse.jdt.core.prefs
+org.eclipse.jdt.ui.prefs
+.fbExcludeFilterFile
+
+pprof.out
+
+# CMake:
+Makefile
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+CTestTestfile.cmake
+!CMakeLists.txt
+
+build/
+# CCache
+compile_commands.json
+
+# Python
+.cache
+.pytest_cache
+
+# OSX
+.DS_Store
+
+# Eclipse artifacts
+.classpath
+.settings
+.project
+
+# VSCode
+.vscode
+.factorypath
+.history/
+
+# IntelliJ
+*.iml
+.idea/
+
+# Bazel
+bazel-bin
+bazel-genfiles
+bazel-okera
+bazel-out
+bazel-testlogs
+
