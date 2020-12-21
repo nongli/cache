@@ -10,6 +10,7 @@ RUN apt-get install -y --no-install-recommends\
                     g++ \
                     clang-10 \
                     build-essential \
+                    wget \
                     cmake \
                     unzip \
                     tar \

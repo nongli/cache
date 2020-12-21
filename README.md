@@ -3,10 +3,18 @@
 ## Download thirdparty dependencies
 
 Typically just need to run this once:
-$ dev/download-thirdparty.sh
+
+```shell
+dev/download-thirdparty.sh
+```
 
 ## Build
+
+```shell
 mkdir -p build && cd build && cmake -H.. -B.
 make
 ./exe/build-check
+```
 
+## CI
+[![nongli](https://circleci.com/gh/nongli/cache.svg?style=svg)](https://app.circleci.com/pipelines/github/nongli)
