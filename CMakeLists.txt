@@ -24,13 +24,15 @@ endif ()
 # Third party dependencies
 #
 add_subdirectory(thirdparty)
+set(LIBS ${LIBS} gflags_nothreads_static)
 set(LIBS ${LIBS} gtest_main)
 
 #
 # Includes
 #
 include_directories(src)
-include_directories(thirdparty/googletest-release/googletest/include)
+include_directories(thirdparty/gtest/googletest/include)
+include_directories(thirdparty/gflags/include)
 
 #
 # Subdirectories
