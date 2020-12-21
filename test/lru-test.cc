@@ -85,5 +85,5 @@ TEST(LRUCache, SmallCache) {
   ASSERT_EQ(p.use_count(), 1);
   ASSERT_TRUE(*p == "Boba Fett");
   ASSERT_EQ(cache.current_size(), 1);
-  ASSERT_EQ(cache.get("Baby Yoda"), nullptr);
+  ASSERT_EQ(cache.get("Bounty Hunter"), nullptr);
 }

@@ -213,10 +213,7 @@ public:
   // Decrease the maximum cache size.
   void decrease_size(size_t delta) { _max_size -= delta; }
 
-  size_t current_size() const {
-    assert(_current_size == _access_map.size());
-    return _current_size;
-  }
+  size_t current_size() const { return _current_size; }
 
   // FIXME: Do we want a default size?
   LRUCache() = delete;
