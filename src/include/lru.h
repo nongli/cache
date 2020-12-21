@@ -52,7 +52,9 @@ public:
   size_t size() const { return _length; }
 
   // FIXME: Worry about concurrency
-  void insert_head(LRULink<K, V> *entry) {
+
+  // Insert entry into head.
+  inline void insert_head(LRULink<K, V> *entry) {
     entry->next = _head;
     if (_head) {
       assert(!_head->prev);
@@ -69,6 +71,8 @@ public:
     _length++;
   }
 
+  // Remove the tail entry, this is essentially aging out
+  // an entry.
   LRULink<K, V> *remove_tail() {
     LRULink<K, V> *ret = _tail;
     if (ret) {
@@ -85,32 +89,33 @@ public:
     return ret;
   }
 
+  // Remove an arbitrary entry.
+  // ASSUMES: entry in list.
+  inline void remove(LRULink<K, V> *entry) {
+    if (entry->prev) {
+      entry->prev->next = entry->next;
+    } else {
+      assert(_head == entry);
+      _head = entry->next;
+    }
+
+    if (entry->next) {
+      entry->next->prev = entry->prev;
+    } else {
+      assert(_tail == entry);
+      _tail = entry->prev;
+    }
+    entry->next = entry->prev = NULL;
+    _length--;
+  }
+
   // When accessing an element move it to the head to allow it to survive.
   // ASSUMES elt is in list.
   void move_to_head(LRULink<K, V> *elt) {
     assert(_head && _tail && _length > 0); // Cannot be an empty list.
-    if (elt->prev && elt->next) {
-      // Middle of the list
-      assert(_length > 1 && _head != elt && _tail != elt);
-      elt->next->prev = elt->prev;
-      elt->prev->next = elt->next;
-      _head->prev = elt;
-      elt->next = _head;
-      elt->prev = NULL;
-
-      _head = elt;
-    } else if (elt->prev) {
-      // Tail of list, but not head
-      assert(_tail == elt && _head != elt);
-      _tail = elt->prev;
-      elt->prev->next = NULL;
-      _head->prev = elt;
-      elt->next = _head;
-      elt->prev = NULL;
-      _head = elt;
-    } else {
-      // elt is already head.
-      assert(_head == elt);
+    if (elt != _head) {
+      remove(elt);
+      insert_head(elt);
     }
   }
 
@@ -139,8 +144,8 @@ public:
       : _max_size{size}, _current_size{0}, _access_list{},
         _access_map{}, _count{} {}
 
-  // Get element from the cache. If found bumps the element up in the LRU list.
-  std::shared_ptr<V> get_element(const K &key) {
+  // Get value from the cache. If found bumps the element up in the LRU list.
+  std::shared_ptr<V> get(const K &key) {
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
@@ -187,6 +192,19 @@ public:
       ret++;
     }
     return ret;
+  }
+
+  // Remove element from cache, return value.
+  std::shared_ptr<V> remove_from_cache(const K &key) {
+    auto elt = _access_map.find(key);
+    if (elt != _access_map.end()) {
+      _access_list.remove(&elt->second);
+      _current_size -= _count(*elt->second.value);
+      auto val = std::move(elt->second.value);
+      _access_map.erase(elt);
+      return val;
+    }
+    return nullptr;
   }
 
   // Increase the maximum cache size.
