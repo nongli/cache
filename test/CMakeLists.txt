@@ -6,3 +6,4 @@ ENDFUNCTION()
 
 ADD_SIMPLE_TEST(example-test example-test.cc)
 ADD_SIMPLE_TEST(lru-test lru-test.cc)
+ADD_SIMPLE_TEST(arc-test arc-test.cc)

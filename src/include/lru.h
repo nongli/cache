@@ -155,6 +155,20 @@ public:
     }
   }
 
+  // Check if value is in the cache. This is useful for things like ghost caches
+  // where we don't have real values. Note we do bump the page up for contains,
+  // this matches what ARC states in Figure 4.
+  inline bool contains(const K &key) {
+    auto elt = _access_map.find(key);
+    if (elt != _access_map.end()) {
+      _access_list.move_to_head(&elt->second);
+      return true;
+    } else {
+      return false;
+      ;
+    }
+  }
+
   // Insert element into cache without eviction.
   // If the same key is used then we replace the value.
   inline void add_to_cache_no_evict(K key, std::shared_ptr<V> value) {
@@ -173,25 +187,36 @@ public:
     }
   }
 
+  // Evict an entry and return the evicted entry's key.
+  // FIXME: We return a key rather than a k,v pair since ARC does not need a
+  // value, but is this a good design.
+  // FIXME: Currently assumes cache has at least one entry. Figure out what to
+  // do otherwise.
+  inline K evict_entry() {
+    assert(_current_size > 0);
+    LRULink<K, V> *remove = _access_list.remove_tail();
+    size_t removed = _access_map.erase(remove->key);
+    // We should have no more than one element with the key.
+    assert(removed == 1);
+    _current_size -= _count(*remove->value);
+    return remove->key;
+  }
+
   // Insert element into the cache. Might evict a cache element if necessary.
   // If the same key is used then we replace the value.
-  // Returns set pf nodes removed.
-  size_t add_to_cache(K key, std::shared_ptr<V> value) {
+  // Returns size of evicted entries.
+  size_t add_to_cache(const K &key, std::shared_ptr<V> value) {
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
     // FIXME: Need to notify on eviction, this is something that the ghost
     // lists need. Alternately the no_evict form is enough?
-    size_t ret = 0;
     add_to_cache_no_evict(key, value);
     assert(_current_size == _access_map.size());
+    size_t before = _current_size;
     while (_current_size > _max_size) {
-      LRULink<K, V> *remove = _access_list.remove_tail();
-      size_t removed = _access_map.erase(remove->key);
-      // We should have no more than one element with the key.
-      assert(removed == 1);
-      _current_size -= _count(*remove->value);
-      ret++;
+      evict_entry();
     }
-    return ret;
+    // FIXME: Is this ever useful?
+    return before - _current_size;
   }
 
   // Remove element from cache, return value.
@@ -213,7 +238,7 @@ public:
   // Decrease the maximum cache size.
   void decrease_size(size_t delta) { _max_size -= delta; }
 
-  size_t current_size() const { return _current_size; }
+  size_t size() const { return _current_size; }
 
   // FIXME: Do we want a default size?
   LRUCache() = delete;
