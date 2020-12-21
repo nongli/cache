@@ -3,5 +3,5 @@
 ## Build
 mkdir -p build && cd build && cmake -H.. -B.
 make
-./build-test
+./exe/build-test
 
