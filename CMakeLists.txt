@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # General compiler flags
-set(CXX_COMMON_FLAGS "-Wall")
+set(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror -fno-omit-frame-pointer -fsanitize=address,undefined")

@@ -6,6 +6,12 @@
 using namespace cache;
 using namespace std;
 
+Trace::~Trace() {
+}
+
+FixedTrace::FixedTrace(const vector<Request>& trace) : _requests(trace) {
+}
+
 vector<Request> TraceGen::SameKeyTrace(
       int64_t n, string_view k, string_view v) {
   vector<Request> result;

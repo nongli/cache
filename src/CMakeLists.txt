@@ -8,7 +8,7 @@ ADD_LIBRARY(Util
 
 FUNCTION(ADD_SIMPLE_EXECUTABLE EXE_NAME SRC)
   add_executable(${EXE_NAME} ${SRC})
-  target_link_libraries(${EXE_NAME} ${LIBS})
+  target_link_libraries(${EXE_NAME} ${LIBS} Cache Util)
 ENDFUNCTION()
 
 # Add the executables
