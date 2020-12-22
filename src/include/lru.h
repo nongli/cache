@@ -26,18 +26,18 @@ template <typename K, typename V> struct LRULink {
   // Given this shared_ptr seemed good, but there are obvious issues with
   // this.
   std::shared_ptr<V> value;
-  LRULink<K, V> *prev;
-  LRULink<K, V> *next;
+  LRULink<K, V>* prev;
+  LRULink<K, V>* next;
 
   // Adding a constructor for convenience.
   LRULink(K k, std::shared_ptr<V> v)
       : key{k}, value{std::move(v)}, prev{NULL}, next{NULL} {}
   // No copy constructor.
-  LRULink(const LRULink &) = delete;
+  LRULink(const LRULink&) = delete;
   // No assignment.
-  LRULink operator=(const LRULink &) = delete;
+  LRULink operator=(const LRULink&) = delete;
   // Yes move
-  LRULink(LRULink &&) = default;
+  LRULink(LRULink&&) = default;
 };
 
 // The actual LRU link list. Elements enter by being inserted at the head
@@ -46,16 +46,16 @@ template <typename K, typename V> class LRUList {
 public:
   LRUList() : _head{NULL}, _tail{NULL}, _length{0} {}
 
-  LRULink<K, V> *peek_head() const { return _head; }
+  LRULink<K, V>* peek_head() const { return _head; }
 
-  LRULink<K, V> *peek_tail() const { return _tail; }
+  LRULink<K, V>* peek_tail() const { return _tail; }
 
   size_t size() const { return _length; }
 
   // FIXME: Worry about concurrency
 
   // Insert entry into head.
-  inline void insert_head(LRULink<K, V> *entry) {
+  inline void insert_head(LRULink<K, V>* entry) {
     entry->next = _head;
     if (_head) {
       assert(!_head->prev);
@@ -74,8 +74,8 @@ public:
 
   // Remove the tail entry, this is essentially aging out
   // an entry.
-  LRULink<K, V> *remove_tail() {
-    LRULink<K, V> *ret = _tail;
+  LRULink<K, V>* remove_tail() {
+    LRULink<K, V>* ret = _tail;
     if (ret) {
       _tail = ret->prev;
       if (_tail) {
@@ -92,7 +92,7 @@ public:
 
   // Remove an arbitrary entry.
   // ASSUMES: entry in list.
-  inline void remove(LRULink<K, V> *entry) {
+  inline void remove(LRULink<K, V>* entry) {
     if (entry->prev) {
       entry->prev->next = entry->next;
     } else {
@@ -112,7 +112,7 @@ public:
 
   // When accessing an element move it to the head to allow it to survive.
   // ASSUMES elt is in list.
-  void move_to_head(LRULink<K, V> *elt) {
+  void move_to_head(LRULink<K, V>* elt) {
     assert(_head && _tail && _length > 0); // Cannot be an empty list.
     if (elt != _head) {
       remove(elt);
@@ -120,20 +120,20 @@ public:
     }
   }
 
-  LRUList(const LRUList &) = delete;
-  LRUList operator=(const LRUList &) = delete;
+  LRUList(const LRUList&) = delete;
+  LRUList operator=(const LRUList&) = delete;
 
 private:
-  LRULink<K, V> *_head;
-  LRULink<K, V> *_tail;
+  LRULink<K, V>* _head;
+  LRULink<K, V>* _tail;
   size_t _length;
 };
 
 template <typename V> class ElementCount {
 public:
   ElementCount() {}
-  ElementCount(const ElementCount &) = default;
-  ElementCount(ElementCount &&) = default;
+  ElementCount(const ElementCount&) = default;
+  ElementCount(ElementCount&&) = default;
   inline size_t operator()(const V*) const { return 1; }
 };
 
@@ -146,7 +146,7 @@ public:
         _access_map{}, _count{} {}
 
   // Get value from the cache. If found bumps the element up in the LRU list.
-  std::shared_ptr<V> get(const K &key) {
+  std::shared_ptr<V> get(const K& key) {
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
@@ -159,7 +159,7 @@ public:
   // Check if value is in the cache. This is useful for things like ghost caches
   // where we don't have real values. Note we do bump the page up for contains,
   // this matches what ARC states in Figure 4.
-  inline bool contains(const K &key) {
+  inline bool contains(const K& key) {
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
@@ -195,7 +195,7 @@ public:
   // do otherwise.
   inline K evict_entry() {
     assert(_current_size > 0);
-    LRULink<K, V> *remove = _access_list.remove_tail();
+    LRULink<K, V>* remove = _access_list.remove_tail();
     std::string key = remove->key;
     _current_size -= _count(remove->value.get());
     size_t removed = _access_map.erase(remove->key);
@@ -207,7 +207,7 @@ public:
   // Insert element into the cache. Might evict a cache element if necessary.
   // If the same key is used then we replace the value.
   // Returns size of evicted entries.
-  size_t add_to_cache(const K &key, std::shared_ptr<V> value) {
+  size_t add_to_cache(const K& key, std::shared_ptr<V> value) {
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
     // FIXME: Need to notify on eviction, this is something that the ghost
     // lists need. Alternately the no_evict form is enough?
@@ -222,7 +222,7 @@ public:
   }
 
   // Remove element from cache, return value.
-  std::shared_ptr<V> remove_from_cache(const K &key) {
+  std::shared_ptr<V> remove_from_cache(const K& key) {
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.remove(&elt->second);
@@ -244,8 +244,8 @@ public:
 
   // FIXME: Do we want a default size?
   LRUCache() = delete;
-  LRUCache(const LRUCache &) = delete;
-  LRUCache operator=(const LRUCache &) = delete;
+  LRUCache(const LRUCache&) = delete;
+  LRUCache operator=(const LRUCache&) = delete;
 
 private:
   size_t _max_size;

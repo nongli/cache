@@ -103,6 +103,7 @@ public:
       if ((value = _lru_cache.remove_from_cache(key))) {
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache(key, insertable);
+        ++_stats.num_hits;
       } else {
         ++_stats.num_misses;
         // Access ghosts.
