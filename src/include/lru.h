@@ -195,11 +195,12 @@ public:
   inline K evict_entry() {
     assert(_current_size > 0);
     LRULink<K, V> *remove = _access_list.remove_tail();
+    std::string key = remove->key;
+    _current_size -= _count(*remove->value);
     size_t removed = _access_map.erase(remove->key);
     // We should have no more than one element with the key.
     assert(removed == 1);
-    _current_size -= _count(*remove->value);
-    return remove->key;
+    return key;
   }
 
   // Insert element into the cache. Might evict a cache element if necessary.
