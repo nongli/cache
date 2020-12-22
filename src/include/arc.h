@@ -131,7 +131,7 @@ public:
 
   AdaptiveCache(size_t size)
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
-        _lfu_ghost{size}, _p{0} {}
+        _lfu_ghost{size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   const Stats& stats() const { return _stats; }
@@ -142,7 +142,7 @@ public:
 
 private:
   size_t _max_size;
-  size_t _p;
+  size_t _p = 0;
   LRUCache<K, V> _lru_cache;
   LRUCache<K, V> _lfu_cache;
   LRUCache<K, V> _lru_ghost;
