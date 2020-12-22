@@ -7,8 +7,8 @@ enable_testing()
 set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/lib)
 
-# C++14
-set(CMAKE_CXX_STANDARD 14)
+# C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # General compiler flags
@@ -46,6 +46,9 @@ include_directories(thirdparty/gflags/include)
 #
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/exe)
 add_subdirectory(src)
+
+set(LIBS ${LIBS} Cache)
+set(LIBS ${LIBS} Util)
 
 #
 # Tests
