@@ -18,6 +18,9 @@ class Trace {
   // Returns nullptr for end
   virtual const Request* next() = 0;
 
+  // Resets the trace to the beginning
+  virtual void Reset() = 0;
+
   virtual ~Trace();
 };
 
@@ -32,6 +35,8 @@ class FixedTrace : public Trace {
     if (_idx >= _requests.size()) return nullptr;
     return &_requests[_idx++];
   }
+
+  virtual void Reset() { _idx = 0; }
 
  private:
   std::vector<Request> _requests;

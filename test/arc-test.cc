@@ -106,8 +106,6 @@ TEST(ArcCache, SmallCycle) {
 }
 
 TEST(ArcCache, Case1) {
-  AdaptiveCache<string, string> cache(100);
-
   // Generate 0...20, 0...20, 0..20
   FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));
   trace.Add(TraceGen::CycleTrace(100, 20, "value"));
@@ -117,9 +115,28 @@ TEST(ArcCache, Case1) {
   // Add 0..20
   trace.Add(TraceGen::CycleTrace(100, 20, "value"));
 
-  TestTrace(&cache, &trace);
-  ASSERT_EQ(400, cache.stats().num_hits);
-  ASSERT_EQ(100, cache.stats().num_misses);
+  AdaptiveCache<string, string> cache1(100);
+  TestTrace(&cache1, &trace);
+  ASSERT_EQ(400, cache1.stats().num_hits);
+  ASSERT_EQ(100, cache1.stats().num_misses);
+
+  trace.Reset();
+  AdaptiveCache<string, string> cache2(40);
+  TestTrace(&cache2, &trace);
+  ASSERT_EQ(400, cache2.stats().num_hits);
+  ASSERT_EQ(100, cache2.stats().num_misses);
+
+  trace.Reset();
+  AdaptiveCache<string, string> cache3(20);
+  TestTrace(&cache3, &trace);
+  ASSERT_EQ(300, cache3.stats().num_hits);
+  ASSERT_EQ(200, cache3.stats().num_misses);
+
+  trace.Reset();
+  AdaptiveCache<string, string> cache4(10);
+  TestTrace(&cache4, &trace);
+  ASSERT_EQ(0, cache4.stats().num_hits);
+  ASSERT_EQ(500, cache4.stats().num_misses);
 }
 
 
