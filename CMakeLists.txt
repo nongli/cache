@@ -15,7 +15,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CXX_COMMON_FLAGS "-Wall")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror -fno-omit-frame-pointer -fsanitize=address,undefined")
+set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address,undefined")
 
 #
 # Out of source builds

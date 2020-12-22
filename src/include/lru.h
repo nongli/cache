@@ -133,7 +133,7 @@ public:
   ElementCount() {}
   ElementCount(const ElementCount &) = default;
   ElementCount(ElementCount &&) = default;
-  inline size_t operator()(const V &) const { return 1; }
+  inline size_t operator()(const V*) const { return 1; }
 };
 
 // An LRU cache of fixed size.
@@ -174,16 +174,17 @@ public:
   inline void add_to_cache_no_evict(K key, std::shared_ptr<V> value) {
     // FIXME Maybe move to C++17 where structured binding makes this more
     // pleasant.
+    size_t val = _count(value.get());
     auto emplaced = _access_map.emplace(
         std::make_pair(key, std::move(LRULink<K, V>(key, value))));
     if (emplaced.second) {
       _access_list.insert_head(&emplaced.first->second);
-      _current_size += _count(*value);
+      _current_size += val;
     } else {
       _access_list.move_to_head(&emplaced.first->second);
-      _current_size -= _count(*(emplaced.first->second.value));
+      _current_size -= _count(emplaced.first->second.value.get());
       emplaced.first->second.value = value;
-      _current_size += _count(*value);
+      _current_size += val;
     }
   }
 
@@ -196,7 +197,7 @@ public:
     assert(_current_size > 0);
     LRULink<K, V> *remove = _access_list.remove_tail();
     std::string key = remove->key;
-    _current_size -= _count(*remove->value);
+    _current_size -= _count(remove->value.get());
     size_t removed = _access_map.erase(remove->key);
     // We should have no more than one element with the key.
     assert(removed == 1);
@@ -225,7 +226,7 @@ public:
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.remove(&elt->second);
-      _current_size -= _count(*elt->second.value);
+      _current_size -= _count(elt->second.value.get());
       auto val = std::move(elt->second.value);
       _access_map.erase(elt);
       return val;
