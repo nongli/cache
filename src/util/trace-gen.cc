@@ -20,3 +20,12 @@ vector<Request> TraceGen::SameKeyTrace(
   }
   return result;
 }
+
+vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, string_view v) {
+  vector<Request> result;
+  for (int64_t i = 0; i < n; ++i) {
+    int64_t key = i % k;
+    result.push_back(Request(std::to_string(key), v));
+  }
+  return result;
+}

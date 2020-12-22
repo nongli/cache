@@ -40,6 +40,11 @@ class TraceGen {
   // Generate a trace with n copies of k,v
   static std::vector<Request> SameKeyTrace(
       int64_t n, std::string_view k, std::string_view v);
+
+  // Generate a trace that cycles from 0 to k up to N values.
+  // e.g. k = N generates all unique keys
+  static std::vector<Request> CycleTrace(
+      int64_t n, int64_t k, std::string_view v);
 };
 
 }

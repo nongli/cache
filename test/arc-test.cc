@@ -89,4 +89,20 @@ TEST(ArcCache, SingleKey) {
   ASSERT_EQ(2, cache.stats().num_misses);
 }
 
+TEST(ArcCache, AllUniqueKey) {
+  AdaptiveCache<string, string> cache(100);
+  FixedTrace trace(TraceGen::CycleTrace(100, 100, "value"));
+  TestTrace(&cache, &trace);
+  ASSERT_EQ(0, cache.stats().num_hits);
+  ASSERT_EQ(100, cache.stats().num_misses);
+}
+
+TEST(ArcCache, SmallCycle) {
+  AdaptiveCache<string, string> cache(100);
+  FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));
+  TestTrace(&cache, &trace);
+  ASSERT_EQ(60, cache.stats().num_hits);
+  ASSERT_EQ(40, cache.stats().num_misses);
+}
+
 
