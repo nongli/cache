@@ -8,4 +8,4 @@ FUNCTION(ADD_SIMPLE_EXECUTABLE EXE_NAME SRC)
 ENDFUNCTION()
 
 # Add the executables
-ADD_SIMPLE_EXECUTABLE(build-check build-check.cc)
+ADD_SIMPLE_EXECUTABLE(build-check util/build-check.cc)

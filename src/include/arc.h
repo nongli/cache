@@ -1,12 +1,16 @@
 #pragma once
+
 /*
  * Implements a ARC cache.
  */
-#include "lru.h"
+
 #include <algorithm>
 #include <cassert>
 #include <memory>
 #include <tuple>
+
+#include "lru.h"
+#include "stats.h"
 
 namespace cache {
 template <typename K, typename V> class AdaptiveCache {
@@ -96,6 +100,7 @@ public:
   std::shared_ptr<V> get(const K &key) {
     auto value = _lfu_cache.get(key);
     if (!value) {
+      ++_stats.num_misses;
       if ((value = _lru_cache.remove_from_cache(key))) {
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache(key, insertable);
@@ -105,6 +110,8 @@ public:
         bool lfu_ghost = _lfu_ghost.contains(key);
         assert((!(lru_ghost || lfu_ghost)) || (lru_ghost ^ lfu_ghost));
       }
+    } else {
+      ++_stats.num_hits;
     }
     return value;
   }
@@ -125,10 +132,12 @@ public:
   AdaptiveCache(size_t size)
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
         _lfu_ghost{size}, _p{0} {}
+
+  inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
+  const Stats& stats() const { return _stats; }
+
   AdaptiveCache() = delete;
   AdaptiveCache(const AdaptiveCache &) = delete;
-  inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
-
   AdaptiveCache operator=(const AdaptiveCache &) = delete;
 
 private:
@@ -138,5 +147,7 @@ private:
   LRUCache<K, V> _lfu_cache;
   LRUCache<K, V> _lru_ghost;
   LRUCache<K, V> _lfu_ghost;
+
+  Stats _stats;
 };
 } // namespace cache
