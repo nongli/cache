@@ -100,11 +100,11 @@ public:
   std::shared_ptr<V> get(const K &key) {
     auto value = _lfu_cache.get(key);
     if (!value) {
-      ++_stats.num_misses;
       if ((value = _lru_cache.remove_from_cache(key))) {
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache(key, insertable);
       } else {
+        ++_stats.num_misses;
         // Access ghosts.
         bool lru_ghost = _lru_ghost.contains(key);
         bool lfu_ghost = _lfu_ghost.contains(key);
@@ -134,7 +134,7 @@ public:
         _lfu_ghost{size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
-  const Stats& stats() const { return _stats; }
+  const Stats &stats() const { return _stats; }
 
   AdaptiveCache() = delete;
   AdaptiveCache(const AdaptiveCache &) = delete;
