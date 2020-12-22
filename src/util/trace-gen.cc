@@ -29,3 +29,9 @@ vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, string_view v) {
   }
   return result;
 }
+
+void FixedTrace::Add(const vector<Request>& trace) {
+  for (const Request& r: trace) {
+    _requests.push_back(r);
+  }
+}

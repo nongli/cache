@@ -86,7 +86,7 @@ TEST(ArcCache, SingleKey) {
   FixedTrace trace(TraceGen::SameKeyTrace(100, "key", "value"));
   TestTrace(&cache, &trace);
   ASSERT_EQ(98, cache.stats().num_hits);
-  ASSERT_EQ(2, cache.stats().num_misses);
+  ASSERT_EQ(1, cache.stats().num_misses);
 }
 
 TEST(ArcCache, AllUniqueKey) {
@@ -102,7 +102,24 @@ TEST(ArcCache, SmallCycle) {
   FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));
   TestTrace(&cache, &trace);
   ASSERT_EQ(60, cache.stats().num_hits);
-  ASSERT_EQ(40, cache.stats().num_misses);
+  ASSERT_EQ(20, cache.stats().num_misses);
+}
+
+TEST(ArcCache, Case1) {
+  AdaptiveCache<string, string> cache(100);
+
+  // Generate 0...20, 0...20, 0..20
+  FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));
+  trace.Add(TraceGen::CycleTrace(100, 20, "value"));
+  trace.Add(TraceGen::CycleTrace(100, 20, "value"));
+  // Add 0...100
+  trace.Add(TraceGen::CycleTrace(100, 100, "value"));
+  // Add 0..20
+  trace.Add(TraceGen::CycleTrace(100, 20, "value"));
+
+  TestTrace(&cache, &trace);
+  ASSERT_EQ(380, cache.stats().num_hits);
+  ASSERT_EQ(100, cache.stats().num_misses);
 }
 
 

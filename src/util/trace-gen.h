@@ -25,6 +25,9 @@ class FixedTrace : public Trace {
  public:
   FixedTrace(const std::vector<Request>& trace);
 
+  // Adds these requests to the end of the trace
+  void Add(const std::vector<Request>& trace);
+
   virtual const Request* next() {
     if (_idx >= _requests.size()) return nullptr;
     return &_requests[_idx++];
