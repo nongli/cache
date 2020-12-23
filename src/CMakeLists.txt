@@ -4,6 +4,7 @@ ADD_LIBRARY(Cache
 
 ADD_LIBRARY(Util
   util/trace-gen.cc
+  util/lock.cc
 )
 
 FUNCTION(ADD_SIMPLE_EXECUTABLE EXE_NAME SRC)
