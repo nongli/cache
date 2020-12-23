@@ -15,8 +15,7 @@
 
 namespace cache {
 
-template <typename K, typename V>
-class AdaptiveCache : public Cache<K, V> {
+template <typename K, typename V> class AdaptiveCache : public Cache<K, V> {
 protected:
   inline void adapt_lru_ghost_hit() {
     size_t delta = 0;
@@ -43,9 +42,11 @@ protected:
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
       K evicted = _lru_cache.evict_entry();
       _lru_ghost.add_to_cache(evicted, nullptr);
+      ++_stats.lfu_evicts;
     } else {
       K evicted = _lfu_cache.evict_entry();
       _lfu_ghost.add_to_cache(evicted, nullptr);
+      ++_stats.lru_evicts;
     }
     ++_stats.num_evicted;
   }
@@ -53,7 +54,7 @@ protected:
 public:
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
-  void add_to_cache(const K &key, std::shared_ptr<V> value) {
+  void add_to_cache(const K& key, std::shared_ptr<V> value) {
     // Check if the key is already in LRU cache.
     // We do so by removing the item since well that is what we would do
     // eventually anyways.
@@ -101,7 +102,7 @@ public:
   }
 
   // Get an item from the cache. This is one half of what the ARC paper does.
-  std::shared_ptr<V> get(const K &key) {
+  std::shared_ptr<V> get(const K& key) {
     auto value = _lfu_cache.get(key);
     if (!value) {
       if ((value = _lru_cache.remove_from_cache(key))) {
@@ -126,7 +127,7 @@ public:
   }
 
   // Remove key from the cache.
-  std::shared_ptr<V> remove_from_cache(const K &key) {
+  std::shared_ptr<V> remove_from_cache(const K& key) {
     auto value = _lru_cache.remove_from_cache(key);
     if (value) {
       return value;
@@ -143,11 +144,11 @@ public:
         _lfu_ghost{size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
-  const Stats &stats() const { return _stats; }
+  const Stats& stats() const { return _stats; }
 
   AdaptiveCache() = delete;
-  AdaptiveCache(const AdaptiveCache &) = delete;
-  AdaptiveCache operator=(const AdaptiveCache &) = delete;
+  AdaptiveCache(const AdaptiveCache&) = delete;
+  AdaptiveCache operator=(const AdaptiveCache&) = delete;
 
 private:
   size_t _max_size;
