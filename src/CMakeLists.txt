@@ -1,3 +1,7 @@
+if(PRINT_TRACE)
+  add_definitions(-DPRINT_TRACE)
+endif(PRINT_TRACE)
+
 ADD_LIBRARY(Cache
   cache.cc
 )

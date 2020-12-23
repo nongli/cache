@@ -1,5 +1,6 @@
 #include "util/trace-gen.h"
 
+#include <iostream>
 #include <random>
 #include <string>
 #include <vector>
@@ -95,6 +96,11 @@ vector<Request> TraceGen::ZipfianDistribution(int64_t n, int64_t k,
   for (int64_t i = 0; i < n; ++i) {
     result.push_back(Request(std::to_string(zipf.Gen()), v));
   }
+#ifdef PRINT_TRACE
+  for (const auto& req : result) {
+    std::cout << req.key << std::endl;
+  }
+#endif
   return result;
 }
 

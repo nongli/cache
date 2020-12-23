@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.2)
 # set the project name
 project(cache)
 enable_testing()
+option(PRINT_TRACE "Print trace when possible" OFF)
 
 set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/lib)
