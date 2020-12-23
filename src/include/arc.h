@@ -44,6 +44,7 @@ protected:
       K evicted = _lfu_cache.evict_entry();
       _lfu_ghost.add_to_cache(evicted, nullptr);
     }
+    ++_stats.num_evicted;
   }
 
 public:
@@ -104,15 +105,19 @@ public:
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache(key, insertable);
         ++_stats.num_hits;
+        ++_stats.lru_hits;
       } else {
         ++_stats.num_misses;
         // Access ghosts.
         bool lru_ghost = _lru_ghost.contains(key);
         bool lfu_ghost = _lfu_ghost.contains(key);
+        _stats.lfu_ghost_hits += (int64_t)lfu_ghost;
+        _stats.lfu_ghost_hits += (int64_t)lru_ghost;
         assert((!(lru_ghost || lfu_ghost)) || (lru_ghost ^ lfu_ghost));
       }
     } else {
       ++_stats.num_hits;
+      ++_stats.lfu_hits;
     }
     return value;
   }
