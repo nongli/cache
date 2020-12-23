@@ -9,11 +9,14 @@
 #include <memory>
 #include <tuple>
 
-#include "lru.h"
-#include "stats.h"
+#include "include/cache.h"
+#include "include/lru.h"
+#include "include/stats.h"
 
 namespace cache {
-template <typename K, typename V> class AdaptiveCache {
+
+template <typename K, typename V>
+class AdaptiveCache : public Cache<K, V> {
 protected:
   inline void adapt_lru_ghost_hit() {
     size_t delta = 0;

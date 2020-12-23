@@ -3,8 +3,9 @@ ADD_LIBRARY(Cache
 )
 
 ADD_LIBRARY(Util
-  util/trace-gen.cc
+  util/compare.cc
   util/lock.cc
+  util/trace-gen.cc
 )
 
 FUNCTION(ADD_SIMPLE_EXECUTABLE EXE_NAME SRC)
@@ -13,4 +14,5 @@ FUNCTION(ADD_SIMPLE_EXECUTABLE EXE_NAME SRC)
 ENDFUNCTION()
 
 # Add the executables
-ADD_SIMPLE_EXECUTABLE(build-check util/build-check.cc)
+# Something is weird with this build
+#ADD_SIMPLE_EXECUTABLE(build-check util/build-check.cc)

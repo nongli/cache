@@ -1,4 +1,5 @@
 #pragma once
+
 /*
  * Implements a LRU cache, which in turn is necessary when building ARC.
  */
@@ -8,8 +9,12 @@
 #include <tuple>
 #include <unordered_map>
 
+#include "include/cache.h"
+#include "include/stats.h"
+
 // FIXME: Maybe move to different namespace?
 namespace cache {
+
 // The LRU itself is a linked list of entries also present in HashMap. The
 // hashmap allows quick lookup, the linked list allows tracking. However, we
 // need some linked list operations that std::list does not seem to offer,
@@ -139,7 +144,7 @@ public:
 
 // An LRU cache of fixed size.
 template <typename K, typename V, typename VSize = ElementCount<V>>
-class LRUCache {
+class LRUCache : public Cache<K, V> {
 public:
   LRUCache(size_t size)
       : _max_size{size}, _current_size{0}, _access_list{},
@@ -149,9 +154,11 @@ public:
   std::shared_ptr<V> get(const K& key) {
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
+      ++_stats.num_hits;
       _access_list.move_to_head(&elt->second);
       return elt->second.value;
     } else {
+      ++_stats.num_misses;
       return nullptr;
     }
   }
@@ -241,6 +248,7 @@ public:
   void decrease_size(size_t delta) { _max_size -= delta; }
 
   size_t size() const { return _current_size; }
+  const Stats& stats() const { return _stats; }
 
   // FIXME: Do we want a default size?
   LRUCache() = delete;
@@ -253,5 +261,7 @@ private:
   LRUList<K, V> _access_list;
   std::unordered_map<K, LRULink<K, V>> _access_map;
   ElementCount<V> _count;
+
+  Stats _stats;
 };
 } // namespace cache
