@@ -22,3 +22,17 @@ TEST(SameKeyTrace, Basic) {
   }
 }
 
+TEST(Zipf, Basic) {
+  int k = 20;
+  Zipfian zipf(k, 1);
+
+  vector<int> histo;
+  histo.resize(k + 1);
+  for (int n = 0; n < 10000; ++n) {
+    histo[zipf.Gen()]++;
+  }
+  for (int i = 1; i < histo.size(); ++i) {
+    printf("%d: %d\n", i, histo[i]);
+  }
+}
+

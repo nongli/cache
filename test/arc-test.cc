@@ -120,6 +120,24 @@ TEST(ArcCache, Gaussian) {
   ASSERT_LT(cache2.stats().num_misses, 450);
 }
 
+TEST(ArcCache, Poisson) {
+  // This will fail with some probability. Retry if this is a problem?
+  AdaptiveCache<string, string> cache(100);
+  FixedTrace trace(TraceGen::PoissonDistribution(500, 20, "value"));
+  TestTrace(&cache, &trace);
+  ASSERT_GT(cache.stats().num_hits, 400);
+  ASSERT_LT(cache.stats().num_misses, 100);
+}
+
+TEST(ArcCache, Zipf) {
+  // This will fail with some probability. Retry if this is a problem?
+  AdaptiveCache<string, string> cache(100);
+  FixedTrace trace(TraceGen::ZipfianDistribution(2000, 500, 1, "value"));
+  TestTrace(&cache, &trace);
+  ASSERT_GT(cache.stats().num_hits, 1000);
+  ASSERT_LT(cache.stats().num_misses, 1000);
+}
+
 TEST(ArcCache, Case1) {
   // Generate 0...20, 0...20, 0..20
   FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));

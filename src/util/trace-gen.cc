@@ -13,6 +13,42 @@ Trace::~Trace() {
 FixedTrace::FixedTrace(const vector<Request>& trace) : _requests(trace) {
 }
 
+Zipfian::Zipfian(int64_t n, double alpha) {
+  double c;
+  for (int64_t i = 1; i <= n; ++i) {
+    c = c + (1.0 / pow((double) i, alpha));
+  }
+  c = 1.0 / c;
+
+  _sum_probs.resize(n + 1);
+  _sum_probs[0] = 0;
+  for (int64_t i = 1; i <= n; ++i) {
+    _sum_probs[i] = _sum_probs[i-1] + c / pow((double) i, alpha);
+  }
+}
+
+int64_t Zipfian::Gen() {
+  double z;
+  do {
+    z = (double)rand() / RAND_MAX;
+  } while (z == 0 || z == 1);
+
+  int64_t low = 1;
+  int64_t high = _sum_probs.size() - 1;
+  int64_t mid;
+  do {
+    mid = floor((low + high) / 2);
+    if (_sum_probs[mid] >= z && _sum_probs[mid - 1] < z) {
+      return mid;
+    } else if (_sum_probs[mid] >= z) {
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  } while (low <= high);
+  return 0;
+}
+
 vector<Request> TraceGen::SameKeyTrace(
       int64_t n, string_view k, string_view v) {
   vector<Request> result;
@@ -31,20 +67,35 @@ vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, string_view v) {
   return result;
 }
 
-vector<Request> TraceGen::NormalDistribution(int64_t n, double mean, double stddev,
-    string_view v) {
+template<class Distribution>
+vector<Request> Gen(int64_t n, Distribution& d, string_view v) {
   vector<Request> result;
-
   random_device rd{};
   mt19937 gen{rd()};
-
-  // values near the mean are the most likely
-  // standard deviation affects the dispersion of generated values from the mean
-  normal_distribution<> d{mean,stddev};
-  for(int64_t i = 0; i < n; ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     result.push_back(Request(std::to_string(std::round(d(gen))), v));
   }
+  return result;
+}
 
+vector<Request> TraceGen::NormalDistribution(int64_t n, double mean, double stddev,
+    string_view v) {
+  normal_distribution<> d{mean,stddev};
+  return Gen(n, d, v);
+}
+
+vector<Request> TraceGen::PoissonDistribution(int64_t n, double mean, string_view v) {
+  poisson_distribution<> d{mean};
+  return Gen(n, d, v);
+}
+
+vector<Request> TraceGen::ZipfianDistribution(
+    int64_t n, int64_t k, double alpha, string_view v) {
+  Zipfian zipf(k, alpha);
+  vector<Request> result;
+  for (int64_t i = 0; i < n; ++i) {
+    result.push_back(Request(std::to_string(zipf.Gen()), v));
+  }
   return result;
 }
 

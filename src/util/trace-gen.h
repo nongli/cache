@@ -43,6 +43,16 @@ class FixedTrace : public Trace {
   int _idx = 0;
 };
 
+class Zipfian {
+ public:
+  // Initializes Zipfian generator for [1, n]
+  Zipfian(int64_t n, double alpha);
+  int64_t Gen();
+
+ private:
+  std::vector<double> _sum_probs;
+};
+
 class TraceGen {
  public:
   // Generate a trace with n copies of k,v
@@ -57,6 +67,14 @@ class TraceGen {
   // Generate a trace that follows a normal distribution with mean and stddev
   static std::vector<Request> NormalDistribution(
       int64_t n, double mean, double stdev, std::string_view v);
+
+  // Generate a trace that follows a poison distribution with mean
+  static std::vector<Request> PoissonDistribution(
+      int64_t n, double mean, std::string_view v);
+
+// Generate a trace that follows a zipfian distribution with values [1, k]
+  static std::vector<Request> ZipfianDistribution(
+      int64_t n, int64_t k, double alpha, std::string_view v);
 };
 
 }
