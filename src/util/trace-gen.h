@@ -53,6 +53,10 @@ class TraceGen {
   // e.g. k = N generates all unique keys
   static std::vector<Request> CycleTrace(
       int64_t n, int64_t k, std::string_view v);
+
+  // Generate a trace that follows a normal distribution with mean and stddev
+  static std::vector<Request> NormalDistribution(
+      int64_t n, double mean, double stdev, std::string_view v);
 };
 
 }
