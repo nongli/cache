@@ -32,5 +32,45 @@ TEST(CacheCompare, Zipf) {
                     TestTrace(LRUCache<string, string>(100), &trace));
   compare.AddResult("lru-50", TestTrace(LRUCache<string, string>(50), &trace));
 
-  printf("n%s", compare.Report("zipf-500-1").c_str());
+  printf("%s", compare.Report("zipf-500-1").c_str());
+}
+
+TEST(CacheCompare, ZipfLongSequence) {
+  int N = 50000;
+  ResultCompare compare;
+  InterleavdTrace trace;
+  FixedTrace zipf = FixedTrace(TraceGen::ZipfianDistribution(42, N, N, .7, "value"));
+  // All unique keys
+  FixedTrace big = FixedTrace(TraceGen::CycleTrace(N, N, "value"));
+  trace.Add(&zipf);
+
+  compare.AddResult("arc-10%",
+                    TestTrace(AdaptiveCache<string, string>(N * .1), &trace));
+  compare.AddResult("arc-5%",
+                    TestTrace(AdaptiveCache<string, string>(N * .05), &trace));
+  compare.AddResult("lru-10%",
+                    TestTrace(LRUCache<string, string>(N * .1), &trace));
+  compare.AddResult("lru-5%", TestTrace(LRUCache<string, string>(N * .05), &trace));
+
+  printf("%s", compare.Report("zipf-long-seq").c_str());
+}
+
+TEST(CacheCompare, ZipfMediumCycle) {
+  int N = 50000;
+  ResultCompare compare;
+  InterleavdTrace trace;
+  FixedTrace zipf = FixedTrace(TraceGen::ZipfianDistribution(42, N, N, .7, "value"));
+  // All unique keys
+  FixedTrace big = FixedTrace(TraceGen::CycleTrace(N, N / 5, "value"));
+  trace.Add(&zipf);
+
+  compare.AddResult("arc-10%",
+                    TestTrace(AdaptiveCache<string, string>(N * .1), &trace));
+  compare.AddResult("arc-5%",
+                    TestTrace(AdaptiveCache<string, string>(N * .05), &trace));
+  compare.AddResult("lru-10%",
+                    TestTrace(LRUCache<string, string>(N * .1), &trace));
+  compare.AddResult("lru-5%", TestTrace(LRUCache<string, string>(N * .05), &trace));
+
+  printf("%s", compare.Report("zipf-long-seq").c_str());
 }

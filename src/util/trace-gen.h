@@ -32,8 +32,9 @@ public:
   void Add(const std::vector<Request>& trace);
 
   virtual const Request* next() {
-    if (_idx >= _requests.size())
+    if (_idx >= _requests.size()) {
       return nullptr;
+    }
     return &_requests[_idx++];
   }
 
@@ -42,6 +43,19 @@ public:
 private:
   std::vector<Request> _requests;
   int _idx = 0;
+};
+
+class InterleavdTrace : public Trace {
+public:
+  void Add(Trace* trace);
+
+  // Randomly picks a value of one of the underlying traces
+  virtual const Request* next();
+  virtual void Reset();
+
+private:
+  std::vector<Trace*> _traces;
+  std::vector<Trace*> _active_traces;
 };
 
 class Zipfian {

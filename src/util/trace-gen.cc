@@ -66,6 +66,29 @@ vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, string_view v) {
   return result;
 }
 
+const Request* InterleavdTrace::next() {
+  while (true) {
+    if (_active_traces.empty()) return nullptr;
+    int trace_idx = rand() % _active_traces.size();
+    const Request* r = _active_traces[trace_idx]->next();
+    if (r != nullptr) return r;
+    _active_traces.erase(_active_traces.begin() + trace_idx);
+  }
+  return nullptr;
+}
+
+void InterleavdTrace::Add(Trace* trace) {
+  _active_traces.push_back(trace);
+  _traces.push_back(trace);
+}
+
+void InterleavdTrace::Reset() {
+  _active_traces = _traces;
+  for (Trace* t: _active_traces) {
+    t->Reset();
+  }
+}
+
 template <class Distribution>
 vector<Request> Gen(int64_t n, Distribution& d, string_view v) {
   vector<Request> result;
