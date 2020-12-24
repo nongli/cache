@@ -20,3 +20,4 @@ ENDFUNCTION()
 # Add the executables
 # Something is weird with this build
 #ADD_SIMPLE_EXECUTABLE(build-check util/build-check.cc)
+ADD_SIMPLE_EXECUTABLE(benchmark-flex-arc bench/bench.cc)

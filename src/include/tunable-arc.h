@@ -14,16 +14,15 @@
 #include "include/stats.h"
 
 namespace cache {
-struct Hello{};
-template <typename K, typename V>
-class FlexARC : public Cache<K, V> {
+struct Hello {};
+template <typename K, typename V> class FlexARC : public Cache<K, V> {
 
 public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size
   // size.
   FlexARC(size_t size, size_t ghost_size)
       : _max_size{size}, _p{0}, _ghost_size{ghost_size}, _lru_cache{size},
-        _lfu_cache{size}, _lru_ghost{size}, _lfu_ghost{size} {}
+        _lfu_cache{size}, _lru_ghost{ghost_size}, _lfu_ghost{ghost_size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   const Stats& stats() const { return _stats; }
@@ -41,38 +40,45 @@ public:
       // Given it was already in the LRU cache, we need to add it
       // to the lfu cache and call it a day.
       _lfu_cache.add_to_cache_no_evict(key, value);
+      assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
     } else if (_lfu_cache.get(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
+      assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
     } else if (_lru_ghost.contains(key)) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
-      replace(false);
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lru_ghost.remove_from_cache(key);
+      assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
+      // Do this only after fixing all invariants
+      replace(false);
     } else if (_lfu_ghost.contains(key)) {
       // Case III
       adapt_lfu_ghost_hit();
-      replace(true);
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lfu_ghost.remove_from_cache(key);
+      assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
+      replace(true);
     } else {
       // Case IV
       size_t lru_size = _lru_cache.size();
       size_t total_size = _lfu_cache.size() + lru_size;
+      _lru_cache.add_to_cache(key, value);
+      assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       if (lru_size == _max_size) {
         // We are using the entire LRU cache, we need to evict items
         // in order to make space.
         auto evicted = _lru_cache.evict_entry();
-        _lru_ghost.add_to_cache(key, nullptr);
+        _lru_ghost.add_to_cache(evicted, nullptr);
+        assert(!_lfu_ghost.contains(evicted) && !_lru_cache.contains(evicted));
         _stats.lru_evicts++;
         _stats.num_evicted++;
       } else if (total_size >= _max_size) {
         // IV(b)
         replace(false);
       }
-      _lru_cache.add_to_cache(key, value);
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
   }
@@ -84,6 +90,7 @@ public:
       if ((value = _lru_cache.remove_from_cache(key))) {
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache_no_evict(key, insertable);
+        assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
         ++_stats.num_hits;
         ++_stats.lru_hits;
       } else {
@@ -142,11 +149,19 @@ protected:
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
       K evicted = _lru_cache.evict_entry();
       _lru_ghost.add_to_cache(evicted, nullptr);
+      assert(!_lfu_ghost.contains(evicted) && !_lru_cache.contains(evicted));
       ++_stats.lru_evicts;
-    } else {
+    } else if (_lfu_cache.size() > 0) {
       K evicted = _lfu_cache.evict_entry();
       _lfu_ghost.add_to_cache(evicted, nullptr);
+      assert(!_lru_ghost.contains(evicted));
       ++_stats.lfu_evicts;
+    } else {
+      // We need to evict something, so...
+      K evicted = _lru_cache.evict_entry();
+      _lru_ghost.add_to_cache(evicted, nullptr);
+      assert(!_lfu_ghost.contains(evicted) && !_lru_cache.contains(evicted));
+      ++_stats.lru_evicts;
     }
     ++_stats.num_evicted;
   }
