@@ -42,11 +42,11 @@ protected:
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
       K evicted = _lru_cache.evict_entry();
       _lru_ghost.add_to_cache(evicted, nullptr);
-      ++_stats.lfu_evicts;
+      ++_stats.lru_evicts;
     } else {
       K evicted = _lfu_cache.evict_entry();
       _lfu_ghost.add_to_cache(evicted, nullptr);
-      ++_stats.lru_evicts;
+      ++_stats.lfu_evicts;
     }
     ++_stats.num_evicted;
   }
@@ -89,6 +89,8 @@ public:
           replace(false);
         } else {
           _lru_cache.evict_entry(); // Make space.
+          _stats.lru_evicts++;
+          _stats.num_evicted++;
         }
       } else if (lru_size < _max_size && total_size >= _max_size) {
         // IV(b)
