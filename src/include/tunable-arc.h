@@ -14,19 +14,23 @@
 #include "include/stats.h"
 
 namespace cache {
+struct Hello{};
+template <typename K, typename V>
+class FlexARC : public Cache<K, V> {
 
-template <typename K, typename V> class AdaptiveCache : public Cache<K, V> {
 public:
-  AdaptiveCache(size_t size)
-      : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
-        _lfu_ghost{size} {}
+  // Produces an ARC with ghost lists of size ghost_size, and cache of size
+  // size.
+  FlexARC(size_t size, size_t ghost_size)
+      : _max_size{size}, _p{0}, _ghost_size{ghost_size}, _lru_cache{size},
+        _lfu_cache{size}, _lru_ghost{size}, _lfu_ghost{size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   const Stats& stats() const { return _stats; }
 
-  AdaptiveCache() = delete;
-  AdaptiveCache(const AdaptiveCache&) = delete;
-  AdaptiveCache operator=(const AdaptiveCache&) = delete;
+  FlexARC() = delete;
+  FlexARC(const FlexARC&) = delete;
+  FlexARC operator=(const FlexARC&) = delete;
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
@@ -36,8 +40,6 @@ public:
     if (_lru_cache.remove_from_cache(key)) {
       // Given it was already in the LRU cache, we need to add it
       // to the lfu cache and call it a day.
-      // No evict is safe here since we are removing from LRU moving
-      // to LFU.
       _lfu_cache.add_to_cache_no_evict(key, value);
     } else if (_lfu_cache.get(key)) {
       // Just update the item, and don't worry about it.
@@ -46,38 +48,28 @@ public:
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
-      // Make space.
       replace(false);
-      // Add to LFU cache
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lru_ghost.remove_from_cache(key);
     } else if (_lfu_ghost.contains(key)) {
       // Case III
       adapt_lfu_ghost_hit();
-      // Make space.
       replace(true);
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lfu_ghost.remove_from_cache(key);
     } else {
       // Case IV
-      size_t lru_size = _lru_cache.size() + _lru_ghost.size();
-      size_t total_size = _lfu_cache.size() + _lfu_ghost.size() + lru_size;
+      size_t lru_size = _lru_cache.size();
+      size_t total_size = _lfu_cache.size() + lru_size;
       if (lru_size == _max_size) {
-        if (_lru_cache.size() < _max_size) {
-          // IV(a)
-          _lru_ghost.evict_entry();
-          replace(false);
-        } else {
-          auto key = _lru_cache.evict_entry(); // Make space.
-          _lru_ghost.add_to_cache(key, nullptr);
-          _stats.lru_evicts++;
-          _stats.num_evicted++;
-        }
-      } else if (lru_size < _max_size && total_size >= _max_size) {
+        // We are using the entire LRU cache, we need to evict items
+        // in order to make space.
+        auto evicted = _lru_cache.evict_entry();
+        _lru_ghost.add_to_cache(key, nullptr);
+        _stats.lru_evicts++;
+        _stats.num_evicted++;
+      } else if (total_size >= _max_size) {
         // IV(b)
-        if (total_size == 2 * _max_size) {
-          _lfu_ghost.evict_entry();
-        }
         replace(false);
       }
       _lru_cache.add_to_cache(key, value);
@@ -144,6 +136,7 @@ protected:
     }
     _p = std::max(_p - delta, size_t(0));
   }
+
   inline void replace(bool in_lfu_ghost) {
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
@@ -158,10 +151,10 @@ protected:
     ++_stats.num_evicted;
   }
 
-
 private:
   size_t _max_size;
-  size_t _p = 0;
+  size_t _p;
+  size_t _ghost_size;
   LRUCache<K, V> _lru_cache;
   LRUCache<K, V> _lfu_cache;
   LRUCache<K, V> _lru_ghost;
