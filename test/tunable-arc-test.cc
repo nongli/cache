@@ -153,12 +153,12 @@ TEST(TunableArcCache, Case1) {
   trace.Reset();
   FlexARC<string, string> cache3(20, 20);
   TestTrace(&cache3, &trace);
-  ASSERT_EQ(300, cache3.stats().num_hits);
-  ASSERT_EQ(200, cache3.stats().num_misses);
+  ASSERT_EQ(400, cache3.stats().num_hits);
+  ASSERT_EQ(100, cache3.stats().num_misses);
 
   trace.Reset();
   FlexARC<string, string> cache4(10, 10);
   TestTrace(&cache4, &trace);
-  ASSERT_EQ(0, cache4.stats().num_hits);
-  ASSERT_EQ(500, cache4.stats().num_misses);
+  ASSERT_EQ(15, cache4.stats().num_hits);
+  ASSERT_EQ(485, cache4.stats().num_misses);
 }

@@ -65,7 +65,7 @@ public:
       // Case IV
       size_t lru_size = _lru_cache.size();
       size_t total_size = _lfu_cache.size() + lru_size;
-      _lru_cache.add_to_cache(key, value);
+      _lru_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       if (lru_size == _max_size) {
         // We are using the entire LRU cache, we need to evict items
@@ -145,6 +145,10 @@ protected:
   }
 
   inline void replace(bool in_lfu_ghost) {
+    // Avoid unnecessary evictions.
+    if (_lru_cache.size() + _lfu_cache.size() < _max_size) {
+      return;
+    }
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
       K evicted = _lru_cache.evict_entry();
