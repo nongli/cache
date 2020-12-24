@@ -8,18 +8,15 @@ using namespace std;
 TEST(ArcCache, SmallCache) {
   AdaptiveCache<string, string> cache(2);
   ASSERT_EQ(cache.size(), 0);
-  cache.add_to_cache("Baby Yoda",
-                     make_shared<string>("Unknown Name"));
+  cache.add_to_cache("Baby Yoda", make_shared<string>("Unknown Name"));
   ASSERT_EQ(cache.size(), 1);
   cache.add_to_cache("Baby Yoda", make_shared<string>("Grogu"));
   ASSERT_EQ(cache.size(), 1);
-  const string &val = *cache.get("Baby Yoda");
+  const string& val = *cache.get("Baby Yoda");
   ASSERT_TRUE(val == "Grogu");
-  cache.add_to_cache("The Mandalorian",
-                     make_shared<string>("Din Djarin"));
+  cache.add_to_cache("The Mandalorian", make_shared<string>("Din Djarin"));
   ASSERT_EQ(cache.size(), 2);
-  cache.add_to_cache("Bounty Hunter",
-                     make_shared<string>("Boba Fett"));
+  cache.add_to_cache("Bounty Hunter", make_shared<string>("Boba Fett"));
   ASSERT_EQ(cache.size(), 2);
   ASSERT_EQ(cache.get("The Mandalorian"), nullptr);
 
@@ -33,14 +30,11 @@ TEST(ArcCache, SmallCache) {
 TEST(ArcCache, LRUOnly) {
   AdaptiveCache<string, string> cache(2);
   ASSERT_EQ(cache.size(), 0);
-  cache.add_to_cache("Baby Yoda",
-                     make_shared<string>("Unknown Name"));
+  cache.add_to_cache("Baby Yoda", make_shared<string>("Unknown Name"));
   ASSERT_EQ(cache.size(), 1);
-  cache.add_to_cache("The Mandalorian",
-                     make_shared<string>("Din Djarin"));
+  cache.add_to_cache("The Mandalorian", make_shared<string>("Din Djarin"));
   ASSERT_EQ(cache.size(), 2);
-  cache.add_to_cache("Bounty Hunter",
-                     make_shared<string>("Boba Fett"));
+  cache.add_to_cache("Bounty Hunter", make_shared<string>("Boba Fett"));
   ASSERT_EQ(cache.size(), 2);
   ASSERT_EQ(cache.get("Baby Yoda"), nullptr);
 }
@@ -48,23 +42,19 @@ TEST(ArcCache, LRUOnly) {
 TEST(ArcCache, Adaptive) {
   AdaptiveCache<string, string> cache(2);
   ASSERT_EQ(cache.size(), 0);
-  cache.add_to_cache("Baby Yoda",
-                     make_shared<string>("Unknown Name"));
+  cache.add_to_cache("Baby Yoda", make_shared<string>("Unknown Name"));
   ASSERT_EQ(cache.size(), 1);
   // Push to LFU side
-  const string &val = *cache.get("Baby Yoda");
+  const string& val = *cache.get("Baby Yoda");
   ASSERT_TRUE(val == "Unknown Name");
   // Adds to LRU
-  cache.add_to_cache("The Mandalorian",
-                     make_shared<string>("Din Djarin"));
+  cache.add_to_cache("The Mandalorian", make_shared<string>("Din Djarin"));
   ASSERT_EQ(cache.size(), 2);
   // Adds to LRU
-  cache.add_to_cache("Bounty Hunter",
-                     make_shared<string>("Boba Fett"));
+  cache.add_to_cache("Bounty Hunter", make_shared<string>("Boba Fett"));
   ASSERT_EQ(cache.size(), 2);
   // Trigger adaptation
-  cache.add_to_cache("The Mandalorian",
-                     make_shared<string>("Din Djarin"));
+  cache.add_to_cache("The Mandalorian", make_shared<string>("Din Djarin"));
   ASSERT_EQ(cache.size(), 2);
   ASSERT_EQ(cache.get("Baby Yoda"), nullptr);
 }
@@ -72,7 +62,8 @@ TEST(ArcCache, Adaptive) {
 void TestTrace(AdaptiveCache<string, string>* cache, Trace* trace) {
   while (true) {
     const Request* r = trace->next();
-    if (r == nullptr) break;
+    if (r == nullptr)
+      break;
 
     shared_ptr<string> val = cache->get(r->key);
     if (!val) {
@@ -168,8 +159,9 @@ TEST(ArcCache, Case1) {
   trace.Reset();
   AdaptiveCache<string, string> cache4(10);
   TestTrace(&cache4, &trace);
-  ASSERT_EQ(0, cache4.stats().num_hits);
-  ASSERT_EQ(500, cache4.stats().num_misses);
+  // You might wonder why 19? This is a problem with ARC. We bump p to 1,
+  // which moves 0 to LFU cache when it is accessed a second time. This in
+  // turn means that it ends up here.
+  ASSERT_EQ(19, cache4.stats().num_hits);
+  ASSERT_EQ(481, cache4.stats().num_misses);
 }
-
-

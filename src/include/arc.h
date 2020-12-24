@@ -82,6 +82,7 @@ public:
       }
       _lru_cache.add_to_cache(key, value);
     }
+    assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
   }
 
   // Get an item from the cache. This is one half of what the ARC paper does.
@@ -106,6 +107,7 @@ public:
       ++_stats.num_hits;
       ++_stats.lfu_hits;
     }
+    assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
     return value;
   }
 
