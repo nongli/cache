@@ -1,3 +1,4 @@
+#include <unordered_set>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -20,6 +21,40 @@ TEST(SameKeyTrace, Basic) {
     ASSERT_EQ(r.key, "key");
     ASSERT_EQ(r.value, "value");
   }
+}
+
+int ComputeUniqueKeys(Trace* trace) {
+  unordered_set<string> keys;
+  while (true) {
+    const Request* r = trace->next();
+    if (r == nullptr) {
+      break;
+    }
+    keys.insert(r->key);
+  }
+  return keys.size();
+}
+
+TEST(CycleTrace, Basic) {
+  FixedTrace trace1(TraceGen::CycleTrace(100, 100, "v"));
+  ASSERT_EQ(100, ComputeUniqueKeys(&trace1));
+
+  FixedTrace trace2(TraceGen::CycleTrace(100, 10, "v"));
+  ASSERT_EQ(10, ComputeUniqueKeys(&trace2));
+}
+
+TEST(ZipfianTrace, Basic) {
+  FixedTrace trace1(TraceGen::ZipfianDistribution(0, 100, 100, 0.7, "v"));
+  ASSERT_EQ(54, ComputeUniqueKeys(&trace1));
+
+  FixedTrace trace2(TraceGen::ZipfianDistribution(0, 100, 100, 1, "v"));
+  ASSERT_EQ(45, ComputeUniqueKeys(&trace2));
+
+  FixedTrace trace3(TraceGen::ZipfianDistribution(0, 100, 20, 0.7, "v"));
+  ASSERT_EQ(20, ComputeUniqueKeys(&trace3));
+
+  FixedTrace trace4(TraceGen::ZipfianDistribution(0, 100, 20, 1, "v"));
+  ASSERT_EQ(19, ComputeUniqueKeys(&trace4));
 }
 
 TEST(Zipf, Basic) {
