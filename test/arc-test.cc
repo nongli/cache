@@ -159,9 +159,9 @@ TEST(ArcCache, Case1) {
   trace.Reset();
   AdaptiveCache<string, string> cache4(10);
   TestTrace(&cache4, &trace);
-  // You might wonder why 19? This is a problem with ARC. We bump p to 1,
+  // You might wonder why 11? This is a problem with ARC. We bump p to 1,
   // which moves 0 to LFU cache when it is accessed a second time. This in
   // turn means that it ends up here.
-  ASSERT_EQ(19, cache4.stats().num_hits);
-  ASSERT_EQ(481, cache4.stats().num_misses);
+  ASSERT_EQ(11, cache4.stats().num_hits);
+  ASSERT_EQ(489, cache4.stats().num_misses);
 }
