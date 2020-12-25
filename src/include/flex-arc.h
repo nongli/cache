@@ -25,8 +25,8 @@ public:
         _lfu_cache{size}, _lru_ghost{ghost_size}, _lfu_ghost{ghost_size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
-  inline size_t max_size() const { return max_size; }
-  inline size_t ghost_size() const { return ghost_size; }
+  inline size_t max_size() const { return _max_size; }
+  inline size_t ghost_size() const { return _ghost_size; }
   const Stats& stats() const { return _stats; }
 
   FlexARC() = delete;
