@@ -71,9 +71,11 @@ public:
           replace(false);
         } else {
           auto key = _lru_cache.evict_entry(); // Make space.
-          _lru_ghost.add_to_cache(key, nullptr);
-          _stats.lru_evicts++;
-          _stats.num_evicted++;
+          if (key) {
+            _lru_ghost.add_to_cache(*key, nullptr);
+            _stats.lru_evicts++;
+            _stats.num_evicted++;
+          }
         }
       } else if (lru_size < _max_size && total_size >= _max_size) {
         // IV(b)
@@ -158,13 +160,21 @@ protected:
   inline void replace(bool in_lfu_ghost) {
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
-      K evicted = _lru_cache.evict_entry();
-      _lru_ghost.add_to_cache(evicted, nullptr);
-      ++_stats.lru_evicts;
+      std::optional<K> evicted = _lru_cache.evict_entry();
+      if (evicted) {
+        _lru_ghost.add_to_cache(*evicted, nullptr);
+        ++_stats.lru_evicts;
+      } else {
+        --_stats.num_evicted;
+      }
     } else {
-      K evicted = _lfu_cache.evict_entry();
-      _lfu_ghost.add_to_cache(evicted, nullptr);
-      ++_stats.lfu_evicts;
+      std::optional<K> evicted = _lfu_cache.evict_entry();
+      if (evicted) {
+        _lfu_ghost.add_to_cache(*evicted, nullptr);
+        ++_stats.lfu_evicts;
+      } else {
+        --_stats.num_evicted;
+      }
     }
     ++_stats.num_evicted;
   }

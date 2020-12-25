@@ -73,10 +73,13 @@ public:
         // We are using the entire LRU cache, we need to evict items
         // in order to make space.
         auto evicted = _lru_cache.evict_entry();
-        _lru_ghost.add_to_cache(evicted, nullptr);
-        assert(!_lfu_ghost.contains(evicted) && !_lru_cache.contains(evicted));
-        _stats.lru_evicts++;
-        _stats.num_evicted++;
+        if (evicted) {
+          _lru_ghost.add_to_cache(*evicted, nullptr);
+          assert(!_lfu_ghost.contains(*evicted) &&
+                 !_lru_cache.contains(*evicted));
+          _stats.lru_evicts++;
+          _stats.num_evicted++;
+        }
       } else if (total_size >= _max_size) {
         // IV(b)
         replace(false);
@@ -162,21 +165,29 @@ protected:
     }
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
-      K evicted = _lru_cache.evict_entry();
-      _lru_ghost.add_to_cache(evicted, nullptr);
-      assert(!_lfu_ghost.contains(evicted) && !_lru_cache.contains(evicted));
-      ++_stats.lru_evicts;
+      std::optional<K> evicted = _lru_cache.evict_entry();
+      if (evicted) {
+        _lru_ghost.add_to_cache(*evicted, nullptr);
+        assert(!_lfu_ghost.contains(*evicted) &&
+               !_lru_cache.contains(*evicted));
+        ++_stats.lru_evicts;
+      }
     } else if (_lfu_cache.size() > 0) {
-      K evicted = _lfu_cache.evict_entry();
-      _lfu_ghost.add_to_cache(evicted, nullptr);
-      assert(!_lru_ghost.contains(evicted));
-      ++_stats.lfu_evicts;
+      std::optional<K> evicted = _lfu_cache.evict_entry();
+      if (evicted) {
+        _lfu_ghost.add_to_cache(*evicted, nullptr);
+        assert(!_lru_ghost.contains(*evicted));
+        ++_stats.lfu_evicts;
+      }
     } else {
       // We need to evict something, so...
-      K evicted = _lru_cache.evict_entry();
-      _lru_ghost.add_to_cache(evicted, nullptr);
-      assert(!_lfu_ghost.contains(evicted) && !_lru_cache.contains(evicted));
-      ++_stats.lru_evicts;
+      std::optional<K> evicted = _lru_cache.evict_entry();
+      if (evicted) {
+        _lru_ghost.add_to_cache(*evicted, nullptr);
+        assert(!_lfu_ghost.contains(*evicted) &&
+               !_lru_cache.contains(*evicted));
+        ++_stats.lru_evicts;
+      }
     }
     ++_stats.num_evicted;
   }

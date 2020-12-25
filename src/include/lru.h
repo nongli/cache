@@ -8,6 +8,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <optional>
 
 #include "include/cache.h"
 #include "include/stats.h"
@@ -206,8 +207,10 @@ public:
   // value, but is this a good design.
   // FIXME: Currently assumes cache has at least one entry. Figure out what to
   // do otherwise.
-  inline K evict_entry() {
-    assert(_current_size > 0);
+  inline std::optional<K> evict_entry() {
+    if(_current_size == 0) {
+        return std::nullopt;
+    }
     LRULink<K, V>* remove = _access_list.remove_tail();
     std::string key = remove->key;
     _current_size -= _count(remove->value.get());
