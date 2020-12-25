@@ -1,11 +1,11 @@
-#include "include/tunable-arc.h"
+#include "include/flex-arc.h"
 #include "util/trace-gen.h"
 #include "gtest/gtest.h"
 
 using namespace cache;
 using namespace std;
 
-TEST(TunableArcCache, SmallCache) {
+TEST(FlexArc, SmallCache) {
   FlexARC<string, string> cache(2, 4);
   ASSERT_EQ(cache.size(), 0);
   cache.add_to_cache("Baby Yoda", make_shared<string>("Unknown Name"));
@@ -27,7 +27,7 @@ TEST(TunableArcCache, SmallCache) {
   ASSERT_EQ(cache.get("Baby Yoda"), nullptr);
 }
 
-TEST(TunableArcCache, LRUOnly) {
+TEST(FlexArc, LRUOnly) {
   FlexARC<string, string> cache(2, 2);
   ASSERT_EQ(cache.size(), 0);
   cache.add_to_cache("Baby Yoda", make_shared<string>("Unknown Name"));
@@ -39,7 +39,7 @@ TEST(TunableArcCache, LRUOnly) {
   ASSERT_EQ(cache.get("Baby Yoda"), nullptr);
 }
 
-TEST(TunableArcCache, Adaptive) {
+TEST(FlexArc, Adaptive) {
   FlexARC<string, string> cache(2, 2);
   ASSERT_EQ(cache.size(), 0);
   cache.add_to_cache("Baby Yoda", make_shared<string>("Unknown Name"));
@@ -72,7 +72,7 @@ void TestTrace(FlexARC<string, string>* cache, Trace* trace) {
   }
 }
 
-TEST(TunableArcCache, SingleKey) {
+TEST(FlexArc, SingleKey) {
   FlexARC<string, string> cache(2, 2);
   FixedTrace trace(TraceGen::SameKeyTrace(100, "key", "value"));
   TestTrace(&cache, &trace);
@@ -80,7 +80,7 @@ TEST(TunableArcCache, SingleKey) {
   ASSERT_EQ(1, cache.stats().num_misses);
 }
 
-TEST(TunableArcCache, AllUniqueKey) {
+TEST(FlexArc, AllUniqueKey) {
   FlexARC<string, string> cache(100, 100);
   FixedTrace trace(TraceGen::CycleTrace(100, 100, "value"));
   TestTrace(&cache, &trace);
@@ -88,7 +88,7 @@ TEST(TunableArcCache, AllUniqueKey) {
   ASSERT_EQ(100, cache.stats().num_misses);
 }
 
-TEST(TunableArcCache, SmallCycle) {
+TEST(FlexArc, SmallCycle) {
   FlexARC<string, string> cache(100, 100);
   FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));
   TestTrace(&cache, &trace);
@@ -96,7 +96,7 @@ TEST(TunableArcCache, SmallCycle) {
   ASSERT_EQ(20, cache.stats().num_misses);
 }
 
-TEST(TunableArcCache, Gaussian) {
+TEST(FlexArc, Gaussian) {
   // This will fail with some probability. Retry if this is a problem?
   FlexARC<string, string> cache(100, 100);
   FixedTrace trace(TraceGen::NormalDistribution(500, 20, 5, "value"));
@@ -111,7 +111,7 @@ TEST(TunableArcCache, Gaussian) {
   ASSERT_LT(cache2.stats().num_misses, 450);
 }
 
-TEST(TunableArcCache, Poisson) {
+TEST(FlexArc, Poisson) {
   // This will fail with some probability. Retry if this is a problem?
   FlexARC<string, string> cache(100, 100);
   FixedTrace trace(TraceGen::PoissonDistribution(500, 20, "value"));
@@ -120,7 +120,7 @@ TEST(TunableArcCache, Poisson) {
   ASSERT_LT(cache.stats().num_misses, 100);
 }
 
-TEST(TunableArcCache, Zipf) {
+TEST(FlexArc, Zipf) {
   // This will fail with some probability. Retry if this is a problem?
   FlexARC<string, string> cache(100, 100);
   FixedTrace trace(TraceGen::ZipfianDistribution(2000, 500, 1, "value"));
@@ -129,7 +129,7 @@ TEST(TunableArcCache, Zipf) {
   ASSERT_LT(cache.stats().num_misses, 1000);
 }
 
-TEST(TunableArcCache, Case1) {
+TEST(FlexArc, Case1) {
   // Generate 0...20, 0...20, 0..20
   FixedTrace trace(TraceGen::CycleTrace(100, 20, "value"));
   trace.Add(TraceGen::CycleTrace(100, 20, "value"));

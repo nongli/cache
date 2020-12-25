@@ -25,6 +25,8 @@ public:
         _lfu_cache{size}, _lru_ghost{ghost_size}, _lfu_ghost{ghost_size} {}
 
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
+  inline size_t max_size() const { return max_size; }
+  inline size_t ghost_size() const { return ghost_size; }
   const Stats& stats() const { return _stats; }
 
   FlexARC() = delete;
@@ -121,6 +123,14 @@ public:
     _lru_ghost.remove_from_cache(key);
     _lfu_ghost.remove_from_cache(key);
     return value;
+  }
+
+  void Clear() {
+    _stats.Clear();
+    _lru_cache.Clear();
+    _lfu_cache.Clear();
+    _lru_ghost.Clear();
+    _lfu_ghost.Clear();
   }
 
 protected:
