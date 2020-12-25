@@ -168,12 +168,24 @@ protected:
         --_stats.num_evicted;
       }
     } else {
-      std::optional<K> evicted = _lfu_cache.evict_entry();
-      if (evicted) {
+      if (_lfu_cache.size() > 0) {
+        std::optional<K> evicted = _lfu_cache.evict_entry();
+        assert(evicted);
         _lfu_ghost.add_to_cache(*evicted, nullptr);
         ++_stats.lfu_evicts;
       } else {
-        --_stats.num_evicted;
+        // OK this is a weird situation to be. In general we expect that each
+        // call to replace removes at least one element, but what if LFU has
+        // nothing to evict and LRU is ignored due to current p?
+        if (_lru_cache.size() >= _max_size) {
+          std::optional<K> evicted = _lru_cache.evict_entry();
+          assert(evicted);
+          _lru_ghost.add_to_cache(*evicted, nullptr);
+          ++_stats.lru_evicts;
+        } else {
+          assert(_lru_cache.size() + _lfu_cache.size() < _max_size);
+          --_stats.num_evicted;
+        }
       }
     }
     ++_stats.num_evicted;
