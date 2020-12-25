@@ -21,12 +21,14 @@ public:
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
         _lfu_ghost{size} {}
 
+  inline size_t max_size() const { return _max_size; }
   inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   const Stats& stats() const { return _stats; }
 
   AdaptiveCache() = delete;
   AdaptiveCache(const AdaptiveCache&) = delete;
   AdaptiveCache operator=(const AdaptiveCache&) = delete;
+
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
@@ -124,6 +126,14 @@ public:
     return value;
   }
 
+  void Clear() {
+    _stats.Clear();
+    _lru_cache.Clear();
+    _lfu_cache.Clear();
+    _lru_ghost.Clear();
+    _lfu_ghost.Clear();
+  }
+
 protected:
   inline void adapt_lru_ghost_hit() {
     size_t delta = 0;
@@ -157,7 +167,6 @@ protected:
     }
     ++_stats.num_evicted;
   }
-
 
 private:
   size_t _max_size;

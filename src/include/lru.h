@@ -36,7 +36,7 @@ template <typename K, typename V> struct LRULink {
 
   // Adding a constructor for convenience.
   LRULink(K k, std::shared_ptr<V> v)
-      : key{k}, value{std::move(v)}, prev{NULL}, next{NULL} {}
+      : key{k}, value{std::move(v)}, prev{nullptr}, next{nullptr} {}
   // No copy constructor.
   LRULink(const LRULink&) = delete;
   // No assignment.
@@ -49,7 +49,7 @@ template <typename K, typename V> struct LRULink {
 // and age out as they fall to the tail. Elements are removed from the tail.
 template <typename K, typename V> class LRUList {
 public:
-  LRUList() : _head{NULL}, _tail{NULL}, _length{0} {}
+  LRUList() : _head{nullptr}, _tail{nullptr}, _length{0} {}
 
   LRULink<K, V>* peek_head() const { return _head; }
 
@@ -84,12 +84,12 @@ public:
     if (ret) {
       _tail = ret->prev;
       if (_tail) {
-        _tail->next = NULL;
+        _tail->next = nullptr;
       } else {
         assert(_length == 1);
-        _head = NULL;
+        _head = nullptr;
       }
-      ret->next = ret->prev = NULL;
+      ret->next = ret->prev = nullptr;
       _length--;
     }
     return ret;
@@ -111,7 +111,7 @@ public:
       assert(_tail == entry);
       _tail = entry->prev;
     }
-    entry->next = entry->prev = NULL;
+    entry->next = entry->prev = nullptr;
     _length--;
   }
 
@@ -123,6 +123,12 @@ public:
       remove(elt);
       insert_head(elt);
     }
+  }
+
+  void Clear() {
+    _head = nullptr;
+    _tail = nullptr;
+    _length = 0;
   }
 
   LRUList(const LRUList&) = delete;
@@ -247,8 +253,16 @@ public:
   // Decrease the maximum cache size.
   void decrease_size(size_t delta) { _max_size -= delta; }
 
+  inline size_t max_size() const { return _max_size; }
   size_t size() const { return _current_size; }
   const Stats& stats() const { return _stats; }
+
+  void Clear() {
+    _current_size = 0;
+    _stats.Clear();
+    _access_map.clear();
+    _access_list.Clear();
+  }
 
   // FIXME: Do we want a default size?
   LRUCache() = delete;
