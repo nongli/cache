@@ -62,7 +62,7 @@ TEST(LRUTest, ListOfSizeThree) {
 TEST(LRUCache, SmallCache) {
   cache::LRUCache<std::string, std::string> cache(2);
   ASSERT_EQ(cache.size(), 0);
-  size_t evicted = cache.add_to_cache(
+  int64_t evicted = cache.add_to_cache(
       "Baby Yoda", std::make_shared<std::string>("Unknown Name"));
   ASSERT_EQ(evicted, 0);
   ASSERT_EQ(cache.size(), 1);

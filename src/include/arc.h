@@ -17,13 +17,14 @@ namespace cache {
 
 template <typename K, typename V> class AdaptiveCache : public Cache<K, V> {
 public:
-  AdaptiveCache(size_t size)
+  AdaptiveCache(int64_t size)
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
         _lfu_ghost{size} {}
 
-  inline size_t max_size() const { return _max_size; }
-  inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
+  inline int64_t max_size() const { return _max_size; }
+  inline int64_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   const Stats& stats() const { return _stats; }
+  inline int64_t p() const { return _p; }
 
   AdaptiveCache() = delete;
   AdaptiveCache(const AdaptiveCache&) = delete;
@@ -62,8 +63,8 @@ public:
       _lfu_ghost.remove_from_cache(key);
     } else {
       // Case IV
-      size_t lru_size = _lru_cache.size() + _lru_ghost.size();
-      size_t total_size = _lfu_cache.size() + _lfu_ghost.size() + lru_size;
+      int64_t lru_size = _lru_cache.size() + _lru_ghost.size();
+      int64_t total_size = _lfu_cache.size() + _lfu_ghost.size() + lru_size;
       if (lru_size == _max_size) {
         if (_lru_cache.size() < _max_size) {
           // IV(a)
@@ -143,7 +144,7 @@ public:
 
 protected:
   inline void adapt_lru_ghost_hit() {
-    size_t delta = 0;
+    int64_t delta = 0;
     if (_lru_ghost.size() >= _lfu_ghost.size()) {
       delta = 1;
     } else {
@@ -153,13 +154,13 @@ protected:
   }
 
   inline void adapt_lfu_ghost_hit() {
-    size_t delta = 0;
+    int64_t delta = 0;
     if (_lfu_ghost.size() >= _lru_ghost.size()) {
       delta = 1;
     } else {
       delta = _lru_ghost.size() / _lfu_ghost.size();
     }
-    _p = std::max(_p - delta, size_t(0));
+    _p = std::max(_p - delta, int64_t(0));
   }
   inline void replace(bool in_lfu_ghost) {
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
@@ -196,8 +197,8 @@ protected:
   }
 
 private:
-  size_t _max_size;
-  size_t _p = 0;
+  int64_t _max_size;
+  int64_t _p = 0;
   LRUCache<K, V> _lru_cache;
   LRUCache<K, V> _lfu_cache;
   LRUCache<K, V> _lru_ghost;

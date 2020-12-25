@@ -20,18 +20,16 @@ template <typename K, typename V> class FlexARC : public Cache<K, V> {
 public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size
   // size.
-  FlexARC(size_t size, size_t ghost_size)
+  FlexARC(int64_t size, int64_t ghost_size)
       : _max_size{size}, _p{0}, _ghost_size{ghost_size}, _lru_cache{size},
         _lfu_cache{size}, _lru_ghost{ghost_size}, _lfu_ghost{ghost_size} {}
 
-  inline size_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
-  inline size_t max_size() const { return _max_size; }
-  inline size_t ghost_size() const { return _ghost_size; }
+  inline int64_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
+  inline int64_t max_size() const { return _max_size; }
+  inline int64_t ghost_size() const { return _ghost_size; }
   const Stats& stats() const { return _stats; }
+  inline int64_t p() const { return _p; }
 
-  FlexARC() = delete;
-  FlexARC(const FlexARC&) = delete;
-  FlexARC operator=(const FlexARC&) = delete;
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
@@ -65,8 +63,8 @@ public:
       replace(true);
     } else {
       // Case IV
-      size_t lru_size = _lru_cache.size();
-      size_t total_size = _lfu_cache.size() + lru_size;
+      int64_t lru_size = _lru_cache.size();
+      int64_t total_size = _lfu_cache.size() + lru_size;
       _lru_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       if (lru_size == _max_size) {
@@ -137,25 +135,31 @@ public:
     _p = 0;
   }
 
+  FlexARC() = delete;
+  FlexARC(const FlexARC&) = delete;
+  FlexARC operator=(const FlexARC&) = delete;
+
 protected:
   inline void adapt_lru_ghost_hit() {
-    size_t delta = 0;
+    int64_t delta = 0;
     if (_lru_ghost.size() >= _lfu_ghost.size()) {
       delta = 1;
     } else {
+      assert(_lru_ghost.size() != 0);
       delta = (_lfu_ghost.size() / _lru_ghost.size());
     }
     _p = std::min(_p + delta, _max_size);
   }
 
   inline void adapt_lfu_ghost_hit() {
-    size_t delta = 0;
+    int64_t delta = 0;
     if (_lfu_ghost.size() >= _lru_ghost.size()) {
       delta = 1;
     } else {
+      assert(_lru_ghost.size() != 0);
       delta = _lru_ghost.size() / _lfu_ghost.size();
     }
-    _p = std::max(_p - delta, size_t(0));
+    _p = std::max(_p - delta, int64_t(0));
   }
 
   inline void replace(bool in_lfu_ghost) {
@@ -193,9 +197,9 @@ protected:
   }
 
 private:
-  size_t _max_size;
-  size_t _p;
-  size_t _ghost_size;
+  int64_t _max_size;
+  int64_t _p;
+  int64_t _ghost_size;
   LRUCache<K, V> _lru_cache;
   LRUCache<K, V> _lfu_cache;
   LRUCache<K, V> _lru_ghost;

@@ -95,6 +95,7 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   row.push_back(to_string(stats.num_hits));
   row.push_back(to_string(stats.num_misses));
   row.push_back(to_string(stats.num_evicted));
+  row.push_back(to_string(cache->p()));
   row.push_back(
       to_string(stats.num_hits * 100 / (stats.num_hits + stats.num_misses)));
   results->AddRow(row);
@@ -126,6 +127,7 @@ int main(int argc, char** argv) {
   results.AddColumn("hits", false);
   results.AddColumn("misses", false);
   results.AddColumn("evicts", false);
+  results.AddColumn("p", false);
   results.AddColumn("hit %", false);
 
   const int keys = FLAGS_unique_keys;

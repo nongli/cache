@@ -22,7 +22,7 @@ cache::Stats TestTrace(Cache cache, cache::Trace* trace) {
 void print_csv_header() {
   std::cout << "Cache Size,Ghost Size,Hits,Misses,Evicted" << std::endl;
 }
-void print_csv_line(size_t cache_size, size_t ghost_size,
+void print_csv_line(int64_t cache_size, int64_t ghost_size,
                     const cache::Stats& stats) {
   std::cout << cache_size << "," << ghost_size << "," << stats.num_hits << ","
             << stats.num_misses << "," << stats.num_evicted << std::endl;
@@ -49,7 +49,7 @@ DEFINE_validator(ghost_increment, &validate_cache_parameters);
 void vary_ghost_size() {
   cache::FixedTrace trace(cache::TraceGen::ZipfianDistribution(
       42, 10000, 850, FLAGS_zipf_parameter, "value"));
-  for (size_t gs = FLAGS_ghost_begin; gs <= FLAGS_ghost_end;
+  for (int64_t gs = FLAGS_ghost_begin; gs <= FLAGS_ghost_end;
        gs += FLAGS_ghost_increment) {
     const auto stats = TestTrace(
         cache::FlexARC<std::string, std::string>(FLAGS_cache_size, gs), &trace);

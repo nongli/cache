@@ -56,7 +56,7 @@ public:
 
   LRULink<K, V>* peek_tail() const { return _tail; }
 
-  size_t size() const { return _length; }
+  int64_t size() const { return _length; }
 
   // FIXME: Worry about concurrency
 
@@ -138,7 +138,7 @@ public:
 private:
   LRULink<K, V>* _head;
   LRULink<K, V>* _tail;
-  size_t _length;
+  int64_t _length;
 };
 
 template <typename V> class ElementCount {
@@ -146,16 +146,21 @@ public:
   ElementCount() {}
   ElementCount(const ElementCount&) = default;
   ElementCount(ElementCount&&) = default;
-  inline size_t operator()(const V*) const { return 1; }
+  inline int64_t operator()(const V*) const { return 1; }
 };
 
 // An LRU cache of fixed size.
 template <typename K, typename V, typename VSize = ElementCount<V>>
 class LRUCache : public Cache<K, V> {
 public:
-  LRUCache(size_t size)
+  LRUCache(int64_t size)
       : _max_size{size}, _current_size{0}, _access_list{},
         _access_map{}, _count{} {}
+
+  inline int64_t max_size() const { return _max_size; }
+  int64_t size() const { return _current_size; }
+  const Stats& stats() const { return _stats; }
+  inline int64_t p() const { return 0; }
 
   // Get value from the cache. If found bumps the element up in the LRU list.
   std::shared_ptr<V> get(const K& key) {
@@ -188,7 +193,7 @@ public:
   inline void add_to_cache_no_evict(K key, std::shared_ptr<V> value) {
     // FIXME Maybe move to C++17 where structured binding makes this more
     // pleasant.
-    size_t val = _count(value.get());
+    int64_t val = _count(value.get());
     auto emplaced = _access_map.emplace(
         std::make_pair(key, std::move(LRULink<K, V>(key, value))));
     if (emplaced.second) {
@@ -214,7 +219,7 @@ public:
     LRULink<K, V>* remove = _access_list.remove_tail();
     std::string key = remove->key;
     _current_size -= _count(remove->value.get());
-    size_t removed = _access_map.erase(remove->key);
+    int64_t removed = _access_map.erase(remove->key);
     // We should have no more than one element with the key.
     assert(removed == 1);
     return key;
@@ -223,13 +228,13 @@ public:
   // Insert element into the cache. Might evict a cache element if necessary.
   // If the same key is used then we replace the value.
   // Returns size of evicted entries.
-  size_t add_to_cache(const K& key, std::shared_ptr<V> value) {
+  int64_t add_to_cache(const K& key, std::shared_ptr<V> value) {
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
     // FIXME: Need to notify on eviction, this is something that the ghost
     // lists need. Alternately the no_evict form is enough?
     add_to_cache_no_evict(key, value);
     assert(_current_size == _access_map.size());
-    size_t before = _current_size;
+    int64_t before = _current_size;
     while (_current_size > _max_size) {
       evict_entry();
     }
@@ -251,14 +256,10 @@ public:
   }
 
   // Increase the maximum cache size.
-  void increase_size(size_t delta) { _max_size += delta; }
+  void increase_size(int64_t delta) { _max_size += delta; }
 
   // Decrease the maximum cache size.
-  void decrease_size(size_t delta) { _max_size -= delta; }
-
-  inline size_t max_size() const { return _max_size; }
-  size_t size() const { return _current_size; }
-  const Stats& stats() const { return _stats; }
+  void decrease_size(int64_t delta) { _max_size -= delta; }
 
   void Clear() {
     _current_size = 0;
@@ -273,8 +274,8 @@ public:
   LRUCache operator=(const LRUCache&) = delete;
 
 private:
-  size_t _max_size;
-  size_t _current_size;
+  int64_t _max_size;
+  int64_t _current_size;
   LRUList<K, V> _access_list;
   std::unordered_map<K, LRULink<K, V>> _access_map;
   ElementCount<V> _count;
