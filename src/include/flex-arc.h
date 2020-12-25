@@ -131,6 +131,7 @@ public:
     _lfu_cache.Clear();
     _lru_ghost.Clear();
     _lfu_ghost.Clear();
+    _p = 0;
   }
 
 protected:
