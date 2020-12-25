@@ -210,12 +210,11 @@ public:
   // Evict an entry and return the evicted entry's key.
   // FIXME: We return a key rather than a k,v pair since ARC does not need a
   // value, but is this a good design.
-  // FIXME: Currently assumes cache has at least one entry. Figure out what to
-  // do otherwise.
   inline std::optional<K> evict_entry() {
-    if(_current_size == 0) {
-        return std::nullopt;
+    if (_current_size == 0) {
+      return std::nullopt;
     }
+    ++_stats.num_evicted;
     LRULink<K, V>* remove = _access_list.remove_tail();
     std::string key = remove->key;
     _current_size -= _count(remove->value.get());

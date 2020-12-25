@@ -11,31 +11,35 @@
 /**
 
 build$ exe/bench-cache -minimal -iters 5
-trace            cache            hits   misses   evicts    hit %
------------------------------------------------------------------
-seq-cycle-10%    arc-25          98000     2000        0       98
-seq-cycle-10%    lru-25          98000     2000        0       98
-seq-cycle-10%    farc-25-400     98000     2000        0       98
+trace              cache            hits   misses   evicts      p    hit %
+--------------------------------------------------------------------------
+seq-cycle-10%      arc-25          98000     2000        0      0       98
+seq-cycle-10%      lru-25          98000     2000        0      0       98
+seq-cycle-10%      farc-25-400     98000     2000        0      0       98
 
-seq-cycle-50%    arc-25           2501    97499    92499        2
-seq-cycle-50%    lru-25              0   100000        0        0
-seq-cycle-50%    farc-25-400      2500    97500    92500        2
+seq-cycle-50%      arc-25           2501    97499    92499   3750        2
+seq-cycle-50%      lru-25              0   100000    95000      0        0
+seq-cycle-50%      farc-25-400      2500    97500    92500      0        2
 
-seq-unique       arc-25              0   100000    95000        0
-seq-unique       lru-25              0   100000        0        0
-seq-unique       farc-25-400      2500    97500    92500        2
+seq-unique         arc-25              0   100000    95000      0        0
+seq-unique         lru-25              0   100000    95000      0        0
+seq-unique         farc-25-400      2500    97500    92500      0        2
 
-zipf-.7          arc-25          66602    33398    28398       66
-zipf-.7          lru-25          51784    48216        0       51
-zipf-.7          farc-25-400     52546    47454    42454       52
+small-big-cycle    arc-25         108000    92000    87000      0       54
+small-big-cycle    lru-25         100000   100000    95000      0       50
+small-big-cycle    farc-25-400    103500    96500    91500      0       51
 
-zipf-1           arc-25          80782    19218    14218       80
-zipf-1           lru-25          79825    20175        0       79
-zipf-1           farc-25-400     80782    19218    14218       80
+zipf-.7            arc-25          66602    33398    28398   1024       66
+zipf-.7            lru-25          51784    48216    43216      0       51
+zipf-.7            farc-25-400     53025    46975    41975      0       53
 
-zipf-seq         arc-25         106791   193209   188209       35
-zipf-seq         lru-25         109344   190656        0       36
-zipf-seq         farc-25-400    109553   190447   185447       36
+zipf-1             arc-25          80782    19218    14218      0       80
+zipf-1             lru-25          79825    20175    15175      0       79
+zipf-1             farc-25-400     80782    19218    14218      0       80
+
+zipf-seq           arc-25         128184   171816   166816     37       42
+zipf-seq           lru-25         109344   190656   185656      0       36
+zipf-seq           farc-25-400    111015   188985   183985      0       37
 
 **/
 
@@ -153,6 +157,12 @@ int main(int argc, char** argv) {
   zip_seq->Add(
       TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
   traces["zipf-seq"] = zip_seq;
+
+  // small cycle, all keys, small cycle
+  FixedTrace* cycle_seq = new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v"));
+  cycle_seq->Add(TraceGen::CycleTrace(keys, keys * .1, "v"));
+  cycle_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
+  traces["small-big-cycle"] = cycle_seq;
 
   //
   // Configure caches
