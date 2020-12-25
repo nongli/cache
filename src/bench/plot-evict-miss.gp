@@ -21,7 +21,7 @@ set ylabel "Count"
 set xlabel "Ghost Size"
 set bars small
 set datafile separator ","
-set key outside bottom center horizontal
+set key outside bottom center horizontal autotitle columnhead
 set output "plot.pdf"
-plot filename using 2:3 w points lc 0  pt 1 title "Hits",\
-     filename using 2:4 w points lc 1  pt 2 title "Misses" 
+plot filename every ::1 using 2:3 w points lc 0  pt 1,\
+     filename every ::1 using 2:4 w points lc 1  pt 2 
