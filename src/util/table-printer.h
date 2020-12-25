@@ -24,6 +24,9 @@ public:
   /// Add a row to the table. This must have the same width as labels.
   void AddRow(const std::vector<std::string>& row);
 
+  // Add empty row to table
+  void AddEmptyRow();
+
   /// Print to a table with prefix coming before the output.
   std::string ToString(const std::string& prefix = "") const;
 

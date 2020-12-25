@@ -4,7 +4,45 @@
 #include "util/table-printer.h"
 #include "util/trace-gen.h"
 
+#include "gflags/gflags.h"
+
 #include <map>
+
+/**
+
+build$ exe/bench-cache -minimal -iters 5
+trace            cache            hits   misses   evicts    hit %
+-----------------------------------------------------------------
+seq-cycle-10%    arc-25          98000     2000        0       98
+seq-cycle-10%    lru-25          98000     2000        0       98
+seq-cycle-10%    farc-25-400     98000     2000        0       98
+
+seq-cycle-50%    arc-25           2501    97499    92499        2
+seq-cycle-50%    lru-25              0   100000        0        0
+seq-cycle-50%    farc-25-400      2500    97500    92500        2
+
+seq-unique       arc-25              0   100000    95000        0
+seq-unique       lru-25              0   100000        0        0
+seq-unique       farc-25-400      2500    97500    92500        2
+
+zipf-.7          arc-25          66602    33398    28398       66
+zipf-.7          lru-25          51784    48216        0       51
+zipf-.7          farc-25-400     52546    47454    42454       52
+
+zipf-1           arc-25          80782    19218    14218       80
+zipf-1           lru-25          79825    20175        0       79
+zipf-1           farc-25-400     80782    19218    14218       80
+
+zipf-seq         arc-25         106791   193209   188209       35
+zipf-seq         lru-25         109344   190656        0       36
+zipf-seq         farc-25-400    109553   190447   185447       36
+
+**/
+
+DEFINE_bool(include_lru, true, "Include lru cache in tests.");
+DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
+DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
+DEFINE_int64(iters, 1, "Number of times to repeated the trace.");
 
 using namespace std;
 using namespace cache;
@@ -16,34 +54,22 @@ vector<FlexARC<string, string>*> farcs;
 
 enum class CacheType { Lru, Arc, Farc };
 
-template <class Cache> Stats TestTrace(Cache cache, Trace* trace) {
-  trace->Reset();
-  while (true) {
-    const Request* r = trace->next();
-    if (r == nullptr) {
-      break;
-    }
-    shared_ptr<string> val = cache.get(r->key);
-    if (!val) {
-      cache.add_to_cache(r->key, make_shared<string>(r->value));
-    }
-  }
-  return cache.stats();
-}
-
 template <class Cache>
 void Test(TablePrinter* results, int n, const string& name, Trace* trace,
-          Cache* cache, CacheType type) {
-  trace->Reset();
+          Cache* cache, CacheType type, int iters) {
   cache->Clear();
-  while (true) {
-    const Request* r = trace->next();
-    if (r == nullptr) {
-      break;
-    }
-    shared_ptr<string> val = cache->get(r->key);
-    if (!val) {
-      cache->add_to_cache(r->key, make_shared<string>(r->value));
+
+  for (int i = 0; i < iters; ++i) {
+    trace->Reset();
+    while (true) {
+      const Request* r = trace->next();
+      if (r == nullptr) {
+        break;
+      }
+      shared_ptr<string> val = cache->get(r->key);
+      if (!val) {
+        cache->add_to_cache(r->key, make_shared<string>(r->value));
+      }
     }
   }
 
@@ -74,29 +100,26 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   results->AddRow(row);
 }
 
-void Test(TablePrinter* results, int n) {
+void Test(TablePrinter* results, int n, int iters) {
   for (auto trace : traces) {
     for (AdaptiveCache<string, string>* cache : arcs) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Arc);
+      Test(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
     }
     for (LRUCache<string, string>* cache : lrus) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Lru);
+      Test(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
     for (FlexARC<string, string>* cache : farcs) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Farc);
+      Test(results, n, trace.first, trace.second, cache, CacheType::Farc, iters);
     }
-    vector<string> row;
-    row.push_back("");
-    row.push_back("");
-    row.push_back("");
-    row.push_back("");
-    row.push_back("");
-    row.push_back("");
-    results->AddRow(row);
+
+    results->AddEmptyRow();
   }
 }
 
 int main(int argc, char** argv) {
+  gflags::SetUsageMessage("Cache Comparison");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   TablePrinter results;
   results.AddColumn("trace", true);
   results.AddColumn("cache", true);
@@ -105,42 +128,53 @@ int main(int argc, char** argv) {
   results.AddColumn("evicts", false);
   results.AddColumn("hit %", false);
 
-  int UNIQUE_KEYS = 20000;
+  const int keys = FLAGS_unique_keys;
 
+  //
   // Configure traces
+  //
   traces["seq-unique"] =
-      new FixedTrace(TraceGen::CycleTrace(UNIQUE_KEYS, UNIQUE_KEYS, "v"));
+      new FixedTrace(TraceGen::CycleTrace(keys, keys, "v"));
   traces["seq-cycle-10%"] =
-      new FixedTrace(TraceGen::CycleTrace(UNIQUE_KEYS, UNIQUE_KEYS * .1, "v"));
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v"));
   traces["seq-cycle-50%"] =
-      new FixedTrace(TraceGen::CycleTrace(UNIQUE_KEYS, UNIQUE_KEYS * .5, "v"));
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v"));
   traces["zipf-1"] = new FixedTrace(
-      TraceGen::ZipfianDistribution(0, UNIQUE_KEYS, UNIQUE_KEYS, 1, "v"));
+      TraceGen::ZipfianDistribution(0, keys, keys, 1, "v"));
   traces["zipf-.7"] = new FixedTrace(
-      TraceGen::ZipfianDistribution(0, UNIQUE_KEYS, UNIQUE_KEYS, 0.7, "v"));
+      TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
 
   // zipf, all keys, zipf
   FixedTrace* zip_seq = new FixedTrace(
-      TraceGen::ZipfianDistribution(0, UNIQUE_KEYS, UNIQUE_KEYS, 0.7, "v"));
-  zip_seq->Add(TraceGen::CycleTrace(UNIQUE_KEYS, UNIQUE_KEYS, "v"));
+      TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
+  zip_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
   zip_seq->Add(
-      TraceGen::ZipfianDistribution(0, UNIQUE_KEYS, UNIQUE_KEYS, 0.7, "v"));
+      TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
   traces["zipf-seq"] = zip_seq;
 
-  const vector<double> cache_sizes{.05, .1, .5, 1.0};
-  const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
-
+  //
   // Configure caches
-  for (double sz : cache_sizes) {
-    arcs.push_back(new AdaptiveCache<string, string>(UNIQUE_KEYS * sz));
-    lrus.push_back(new LRUCache<string, string>(UNIQUE_KEYS * sz));
-    for (double gs : ghost_sizes) {
-      farcs.push_back(
-          new FlexARC<string, string>(UNIQUE_KEYS * sz, UNIQUE_KEYS * sz * gs));
+  //
+  if (FLAGS_minimal) {
+    arcs.push_back(new AdaptiveCache<string, string>(keys * .25));
+    farcs.push_back(new FlexARC<string, string>(keys * .25, keys));
+    lrus.push_back(new LRUCache<string, string>(keys * .25));
+  } else {
+    const vector<double> cache_sizes{.05, .1, .5, 1.0};
+    const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
+    for (double sz : cache_sizes) {
+      arcs.push_back(new AdaptiveCache<string, string>(keys * sz));
+      if (FLAGS_include_lru) {
+        lrus.push_back(new LRUCache<string, string>(keys * sz));
+      }
+      for (double gs : ghost_sizes) {
+        farcs.push_back(
+            new FlexARC<string, string>(keys * sz, keys * sz * gs));
+      }
     }
   }
 
-  Test(&results, UNIQUE_KEYS);
+  Test(&results, keys, FLAGS_iters);
   printf("%s\n", results.ToString().c_str());
 
   for (auto t : traces) {

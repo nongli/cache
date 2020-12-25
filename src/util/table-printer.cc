@@ -30,6 +30,11 @@ void TablePrinter::AddRow(const vector<string>& row) {
   }
 }
 
+void TablePrinter::AddEmptyRow() {
+  vector<string> row(labels_.size(), "");
+  rows_.push_back(row);
+}
+
 void TablePrinter::PrintRow(stringstream* s, const vector<string>& row,
       const vector<int>& widths) const {
   stringstream& ss = *s;
