@@ -84,7 +84,11 @@ public:
         }
         replace(false);
       }
-      _lru_cache.add_to_cache(key, value);
+      // FIXME: This is a weird place to end up, but not sure why.
+      if (size() >= _max_size) {
+        replace(false);
+      }
+      _lru_cache.add_to_cache_no_evict(key, value);
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
   }
