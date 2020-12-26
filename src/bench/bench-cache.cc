@@ -9,38 +9,36 @@
 #include <map>
 
 /**
+exe/bench-cache --iters 5 -minimal
+trace              cache            hits   misses   evicts      p   hit %   LRU %   LFU %   miss %   LRU Ghost %    LFU Ghost %
+-------------------------------------------------------------------------------------------------------------------------------
+seq-cycle-10%      arc-25          98000     2000        0      0      98       2      97        2             0              0
+seq-cycle-10%      lru-25          98000     2000        0      0      98       -       -        2             -              -
+seq-cycle-10%      farc-25-400     98000     2000        0      0      98       2      97        2             0              0
 
-build$ exe/bench-cache -minimal -iters 5
-trace              cache           hits   misses   evicts      p    hit %
--------------------------------------------------------------------------
-seq-cycle-10%      arc-25         18000     2000        0      0       90
-seq-cycle-10%      lru-25         18000     2000        0      0       90
-seq-cycle-10%      farc-25-400    18000     2000        0      0       90
+seq-cycle-50%      arc-25           2501    97499    92499   3750       2     100       0       97             0             73
+seq-cycle-50%      lru-25              0   100000    95000      0       0       -       -      100             -              -
+seq-cycle-50%      farc-25-400      2500    97500    92500      0       2     100       0       97             0             89
 
-seq-cycle-50%      arc-25             1    19999    14999   5000        0
-seq-cycle-50%      lru-25             0    20000    15000      0        0
-seq-cycle-50%      farc-25-400     2500    17500    12500   5000       12
+seq-unique         arc-25              0   100000    95000      0       0       -       -      100             0              0
+seq-unique         lru-25              0   100000    95000      0       0       -       -      100             -              -
+seq-unique         farc-25-400      2500    97500    92500      0       2     100       0       97             0             79
 
-seq-unique         arc-25             0    20000    15000      0        0
-seq-unique         lru-25             0    20000    15000      0        0
-seq-unique         farc-25-400        0    20000    15000      0        0
+small-big-cycle    arc-25         200800    99200    94200      0      66       0      99       33             0              0
+small-big-cycle    lru-25         200000   100000    95000      0      66       -       -       33             -              -
+small-big-cycle    farc-25-400    202600    97400    92400      0      67       1      98       32             0             79
 
-small-big-cycle    arc-25         40000    20000    15000      0       66
-small-big-cycle    lru-25         40000    20000    15000      0       66
-small-big-cycle    farc-25-400    40000    20000    15000      0       66
+zipf-.7            arc-25          66352    33648    28648   1061      66       3      96       33             0              3
+zipf-.7            lru-25          51667    48333    43333      0      51       -       -       48             -              -
+zipf-.7            farc-25-400     52870    47130    42130      0      52       4      95       47             0             80
 
-zipf-.7            arc-25          9517    10483     5483   1021       47
-zipf-.7            lru-25          9384    10616     5616      0       46
-zipf-.7            farc-25-400     9517    10483     5483   1105       47
+zipf-1             arc-25          80558    19442    14442      0      80       3      96       19             0             72
+zipf-1             lru-25          79849    20151    15151      0      79       -       -       20             -              -
+zipf-1             farc-25-400     80558    19442    14442      0      80       3      96       19             0             72
 
-zipf-1             arc-25         14618     5382      382     10       73
-zipf-1             lru-25         14617     5383      383      0       73
-zipf-1             farc-25-400    14618     5382      382     10       73
-
-zipf-seq           arc-25         24059    35941    30941      7       40
-zipf-seq           lru-25         20896    39104    34104      0       34
-zipf-seq           farc-25-400    22567    37433    32433      0       37
-
+zipf-seq           arc-25         128581   171419   166419     31      42       2      97       57             0             28
+zipf-seq           lru-25         109112   190888   185888      0      36       -       -       63             -              -
+zipf-seq           farc-25-400    110764   189236   184236      0      36       2      97       63             0             89
 **/
 
 DEFINE_bool(include_lru, true, "Include lru cache in tests.");
@@ -102,6 +100,33 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   row.push_back(to_string(cache->p()));
   row.push_back(
       to_string(stats.num_hits * 100 / (stats.num_hits + stats.num_misses)));
+  if (type == CacheType::Lru) {
+    row.push_back("-");
+    row.push_back("-");
+  } else {
+    if (stats.num_hits > 0) {
+      row.push_back(to_string(stats.lru_hits * 100 / stats.num_hits));
+      row.push_back(to_string(stats.lfu_hits * 100 / stats.num_hits));
+    } else {
+      row.push_back("-");
+      row.push_back("-");
+    }
+  }
+  row.push_back(
+      to_string(stats.num_misses * 100 / (stats.num_hits + stats.num_misses)));
+  if (type == CacheType::Lru) {
+    row.push_back("-");
+    row.push_back("-");
+  } else {
+    if (stats.num_misses > 0) {
+      row.push_back(to_string(stats.lru_ghost_hits * 100 / stats.num_misses));
+      row.push_back(to_string(stats.lfu_ghost_hits * 100 / stats.num_misses));
+    } else {
+      row.push_back("-");
+      row.push_back("-");
+    }
+  }
+
   results->AddRow(row);
 }
 
@@ -114,7 +139,8 @@ void Test(TablePrinter* results, int n, int iters) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
     for (FlexARC<string, string>* cache : farcs) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Farc, iters);
+      Test(results, n, trace.first, trace.second, cache, CacheType::Farc,
+           iters);
     }
 
     results->AddEmptyRow();
@@ -133,33 +159,37 @@ int main(int argc, char** argv) {
   results.AddColumn("evicts", false);
   results.AddColumn("p", false);
   results.AddColumn("hit %", false);
+  results.AddColumn("LRU %", false);
+  results.AddColumn("LFU %", false);
+  results.AddColumn("miss %", false);
+  results.AddColumn("LRU Ghost %", false);
+  results.AddColumn("LFU Ghost %", false);
 
   const int keys = FLAGS_unique_keys;
 
   //
   // Configure traces
   //
-  traces["seq-unique"] =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys, "v"));
+  traces["seq-unique"] = new FixedTrace(TraceGen::CycleTrace(keys, keys, "v"));
   traces["seq-cycle-10%"] =
       new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v"));
   traces["seq-cycle-50%"] =
       new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v"));
-  traces["zipf-1"] = new FixedTrace(
-      TraceGen::ZipfianDistribution(0, keys, keys, 1, "v"));
-  traces["zipf-.7"] = new FixedTrace(
-      TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
+  traces["zipf-1"] =
+      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 1, "v"));
+  traces["zipf-.7"] =
+      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
 
   // zipf, all keys, zipf
-  FixedTrace* zip_seq = new FixedTrace(
-      TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
+  FixedTrace* zip_seq =
+      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
   zip_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  zip_seq->Add(
-      TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
+  zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
   traces["zipf-seq"] = zip_seq;
 
   // small cycle, all keys, small cycle
-  FixedTrace* cycle_seq = new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
+  FixedTrace* cycle_seq =
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
   cycle_seq->Add(TraceGen::CycleTrace(keys, keys * .01, "v"));
   cycle_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
   traces["small-big-cycle"] = cycle_seq;
@@ -180,8 +210,7 @@ int main(int argc, char** argv) {
         lrus.push_back(new LRUCache<string, string>(keys * sz));
       }
       for (double gs : ghost_sizes) {
-        farcs.push_back(
-            new FlexARC<string, string>(keys * sz, keys * sz * gs));
+        farcs.push_back(new FlexARC<string, string>(keys * sz, keys * sz * gs));
       }
     }
   }
