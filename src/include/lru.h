@@ -197,8 +197,6 @@ public:
   // Insert element into cache without eviction.
   // If the same key is used then we replace the value.
   inline void add_to_cache_no_evict(const K& key, std::shared_ptr<V> value) {
-    // FIXME Maybe move to C++17 where structured binding makes this more
-    // pleasant.
     std::lock_guard<Lock> l(_lock);
     add_to_cache_no_evict_impl(key, value);
   }

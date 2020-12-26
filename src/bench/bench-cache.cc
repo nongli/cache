@@ -45,7 +45,7 @@
 DEFINE_bool(include_lru, true, "Include lru cache in tests.");
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
-DEFINE_int64(iters, 1, "Number of times to repeated the trace.");
+DEFINE_int64(iters, 2, "Number of times to repeated the trace.");
 
 using namespace std;
 using namespace cache;
@@ -195,12 +195,17 @@ int main(int argc, char** argv) {
   zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
   traces["zipf-seq"] = zip_seq;
 
-  // small cycle, all keys, small cycle
-  FixedTrace* cycle_seq =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
-  cycle_seq->Add(TraceGen::CycleTrace(keys, keys * .01, "v"));
-  cycle_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  traces["small-big-cycle"] = cycle_seq;
+  // tiny + all keys
+  FixedTrace* tiny_seq_cycle = new FixedTrace(
+      TraceGen::CycleTrace(keys, keys * .01, "v"));
+  tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
+  traces["tiny-seq-cycle"] = tiny_seq_cycle;
+
+  // medium + all keys
+  FixedTrace* med_seq_cycle = new FixedTrace(
+      TraceGen::CycleTrace(keys, keys * .25, "v"));
+  med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
+  traces["med-seq-cycle"] = med_seq_cycle;
 
   //
   // Configure caches

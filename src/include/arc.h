@@ -177,7 +177,7 @@ protected:
     if (_lru_ghost.size() >= _lfu_ghost.size()) {
       delta = 1;
     } else {
-      delta = (_lfu_ghost.size() / _lru_ghost.size());
+      delta = _lfu_ghost.size() / _lru_ghost.size();
     }
     _p = std::min(_p + delta, _max_size);
     _max_p = std::max(_max_p, _p);
