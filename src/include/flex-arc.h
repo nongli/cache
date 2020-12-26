@@ -11,11 +11,10 @@
 
 #include "include/cache.h"
 #include "include/lru.h"
-#include "util/lock.h"
 
 namespace cache {
 
-template <typename K, typename V, typename Lock = WordLock>
+template <typename K, typename V, typename Lock = NopLock>
 class FlexARC : public Cache<K, V> {
 public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size

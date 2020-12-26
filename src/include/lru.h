@@ -12,7 +12,6 @@
 #include <unordered_map>
 
 #include "include/cache.h"
-#include "util/lock.h"
 
 // FIXME: Maybe move to different namespace?
 namespace cache {
@@ -151,7 +150,7 @@ public:
 };
 
 // An LRU cache of fixed size.
-template <typename K, typename V, typename Lock = WordLock,
+template <typename K, typename V, typename Lock = NopLock,
           typename VSize = ElementCount<V>>
 class LRUCache : public Cache<K, V> {
 public:

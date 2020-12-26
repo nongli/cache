@@ -11,11 +11,10 @@
 
 #include "include/cache.h"
 #include "include/lru.h"
-#include "util/lock.h"
 
 namespace cache {
 
-template <typename K, typename V, typename Lock = WordLock>
+template <typename K, typename V, typename Lock = NopLock>
 class AdaptiveCache : public Cache<K, V> {
 public:
   AdaptiveCache(int64_t size)
