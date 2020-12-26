@@ -13,6 +13,7 @@
 
 #include "include/cache.h"
 #include "include/stats.h"
+#include "util/lock.h"
 
 // FIXME: Maybe move to different namespace?
 namespace cache {
@@ -150,17 +151,9 @@ public:
   inline int64_t operator()(const V*) const { return 1; }
 };
 
-class NoLock {
-public:
-  void lock() {}
-  void unlock() {}
-
-};
-
 // An LRU cache of fixed size.
-template <typename K, typename V,
-         typename Lock = NoLock,
-         typename VSize = ElementCount<V>>
+template <typename K, typename V, typename Lock = WordLock,
+          typename VSize = ElementCount<V>>
 class LRUCache : public Cache<K, V> {
 public:
   LRUCache(int64_t size)
@@ -293,7 +286,8 @@ private:
 
   // Insert element into cache without eviction.
   // If the same key is used then we replace the value.
-  inline void add_to_cache_no_evict_impl(const K& key, std::shared_ptr<V> value) {
+  inline void add_to_cache_no_evict_impl(const K& key,
+                                         std::shared_ptr<V> value) {
     // FIXME Maybe move to C++17 where structured binding makes this more
     // pleasant.
     int64_t val = _count(value.get());

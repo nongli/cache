@@ -13,6 +13,7 @@
 #include "include/lru.h"
 #include "include/stats.h"
 #include "util/lock.h"
+#include "util/nop-lock.h"
 
 namespace cache {
 
@@ -206,10 +207,10 @@ private:
   int64_t _max_size;
   int64_t _p;
   int64_t _ghost_size;
-  LRUCache<K, V, NoLock> _lru_cache;
-  LRUCache<K, V, NoLock> _lfu_cache;
-  LRUCache<K, V, NoLock> _lru_ghost;
-  LRUCache<K, V, NoLock> _lfu_ghost;
+  LRUCache<K, V, NopLock> _lru_cache;
+  LRUCache<K, V, NopLock> _lfu_cache;
+  LRUCache<K, V, NopLock> _lru_ghost;
+  LRUCache<K, V, NopLock> _lfu_ghost;
   Stats _stats;
 };
 } // namespace cache
