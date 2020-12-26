@@ -16,7 +16,6 @@
 namespace cache {
 
 template <typename K, typename V> class FlexARC : public Cache<K, V> {
-
 public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size
   // size.
@@ -200,11 +199,10 @@ private:
   int64_t _max_size;
   int64_t _p;
   int64_t _ghost_size;
-  LRUCache<K, V> _lru_cache;
-  LRUCache<K, V> _lfu_cache;
-  LRUCache<K, V> _lru_ghost;
-  LRUCache<K, V> _lfu_ghost;
-
+  LRUCache<K, V, NoLock> _lru_cache;
+  LRUCache<K, V, NoLock> _lfu_cache;
+  LRUCache<K, V, NoLock> _lru_ghost;
+  LRUCache<K, V, NoLock> _lfu_ghost;
   Stats _stats;
 };
 } // namespace cache

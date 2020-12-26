@@ -159,6 +159,6 @@ TEST(FlexArc, Case1) {
   trace.Reset();
   FlexARC<string, string> cache4(10, 10);
   TestTrace(&cache4, &trace);
-  ASSERT_EQ(15, cache4.stats().num_hits);
-  ASSERT_EQ(485, cache4.stats().num_misses);
+  ASSERT_EQ(5, cache4.stats().num_hits);
+  ASSERT_EQ(495, cache4.stats().num_misses);
 }

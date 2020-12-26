@@ -162,6 +162,7 @@ protected:
     }
     _p = std::max(_p - delta, int64_t(0));
   }
+
   inline void replace(bool in_lfu_ghost) {
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
@@ -199,11 +200,11 @@ protected:
 private:
   int64_t _max_size;
   int64_t _p = 0;
-  LRUCache<K, V> _lru_cache;
-  LRUCache<K, V> _lfu_cache;
-  LRUCache<K, V> _lru_ghost;
-  LRUCache<K, V> _lfu_ghost;
-
+  LRUCache<K, V, NoLock> _lru_cache;
+  LRUCache<K, V, NoLock> _lfu_cache;
+  LRUCache<K, V, NoLock> _lru_ghost;
+  LRUCache<K, V, NoLock> _lfu_ghost;
   Stats _stats;
 };
+
 } // namespace cache

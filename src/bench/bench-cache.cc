@@ -159,8 +159,8 @@ int main(int argc, char** argv) {
   traces["zipf-seq"] = zip_seq;
 
   // small cycle, all keys, small cycle
-  FixedTrace* cycle_seq = new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v"));
-  cycle_seq->Add(TraceGen::CycleTrace(keys, keys * .1, "v"));
+  FixedTrace* cycle_seq = new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
+  cycle_seq->Add(TraceGen::CycleTrace(keys, keys * .01, "v"));
   cycle_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
   traces["small-big-cycle"] = cycle_seq;
 

@@ -5,10 +5,11 @@
  */
 #include <cassert>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
-#include <optional>
 
 #include "include/cache.h"
 #include "include/stats.h"
@@ -149,8 +150,17 @@ public:
   inline int64_t operator()(const V*) const { return 1; }
 };
 
+class NoLock {
+public:
+  void lock() {}
+  void unlock() {}
+
+};
+
 // An LRU cache of fixed size.
-template <typename K, typename V, typename VSize = ElementCount<V>>
+template <typename K, typename V,
+         typename Lock = NoLock,
+         typename VSize = ElementCount<V>>
 class LRUCache : public Cache<K, V> {
 public:
   LRUCache(int64_t size)
@@ -164,6 +174,7 @@ public:
 
   // Get value from the cache. If found bumps the element up in the LRU list.
   std::shared_ptr<V> get(const K& key) {
+    std::lock_guard l(_lock);
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       ++_stats.num_hits;
@@ -179,6 +190,7 @@ public:
   // where we don't have real values. Note we do bump the page up for contains,
   // this matches what ARC states in Figure 4.
   inline bool contains(const K& key) {
+    std::lock_guard l(_lock);
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
@@ -190,38 +202,17 @@ public:
 
   // Insert element into cache without eviction.
   // If the same key is used then we replace the value.
-  inline void add_to_cache_no_evict(K key, std::shared_ptr<V> value) {
+  inline void add_to_cache_no_evict(const K& key, std::shared_ptr<V> value) {
     // FIXME Maybe move to C++17 where structured binding makes this more
     // pleasant.
-    int64_t val = _count(value.get());
-    auto emplaced = _access_map.emplace(
-        std::make_pair(key, std::move(LRULink<K, V>(key, value))));
-    if (emplaced.second) {
-      _access_list.insert_head(&emplaced.first->second);
-      _current_size += val;
-    } else {
-      _access_list.move_to_head(&emplaced.first->second);
-      _current_size -= _count(emplaced.first->second.value.get());
-      emplaced.first->second.value = value;
-      _current_size += val;
-    }
+    std::lock_guard l(_lock);
+    add_to_cache_no_evict_impl(key, value);
   }
 
   // Evict an entry and return the evicted entry's key.
-  // FIXME: We return a key rather than a k,v pair since ARC does not need a
-  // value, but is this a good design.
   inline std::optional<K> evict_entry() {
-    if (_current_size == 0) {
-      return std::nullopt;
-    }
-    ++_stats.num_evicted;
-    LRULink<K, V>* remove = _access_list.remove_tail();
-    std::string key = remove->key;
-    _current_size -= _count(remove->value.get());
-    int64_t removed = _access_map.erase(remove->key);
-    // We should have no more than one element with the key.
-    assert(removed == 1);
-    return key;
+    std::lock_guard l(_lock);
+    return evict_entry_impl();
   }
 
   // Insert element into the cache. Might evict a cache element if necessary.
@@ -231,11 +222,12 @@ public:
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
     // FIXME: Need to notify on eviction, this is something that the ghost
     // lists need. Alternately the no_evict form is enough?
-    add_to_cache_no_evict(key, value);
+    std::lock_guard l(_lock);
+    add_to_cache_no_evict_impl(key, value);
     assert(_current_size == _access_map.size());
     int64_t before = _current_size;
     while (_current_size > _max_size) {
-      evict_entry();
+      evict_entry_impl();
     }
     // FIXME: Is this ever useful?
     return before - _current_size;
@@ -243,6 +235,7 @@ public:
 
   // Remove element from cache, return value.
   std::shared_ptr<V> remove_from_cache(const K& key) {
+    std::lock_guard l(_lock);
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.remove(&elt->second);
@@ -273,12 +266,48 @@ public:
   LRUCache operator=(const LRUCache&) = delete;
 
 private:
+  Lock _lock;
   int64_t _max_size;
   int64_t _current_size;
   LRUList<K, V> _access_list;
   std::unordered_map<K, LRULink<K, V>> _access_map;
   ElementCount<V> _count;
-
   Stats _stats;
+
+  // FIXME: We return a key rather than a k,v pair since ARC does not need a
+  // value, but is this a good design.
+  inline std::optional<K> evict_entry_impl() {
+    if (_current_size == 0) {
+      return std::nullopt;
+    }
+    ++_stats.num_evicted;
+    LRULink<K, V>* remove = _access_list.remove_tail();
+    std::string key = remove->key;
+    _current_size -= _count(remove->value.get());
+    int64_t removed = _access_map.erase(remove->key);
+    // We should have no more than one element with the key.
+    assert(removed == 1);
+    return key;
+  }
+
+  // Insert element into cache without eviction.
+  // If the same key is used then we replace the value.
+  inline void add_to_cache_no_evict_impl(const K& key, std::shared_ptr<V> value) {
+    // FIXME Maybe move to C++17 where structured binding makes this more
+    // pleasant.
+    int64_t val = _count(value.get());
+    auto emplaced = _access_map.emplace(
+        std::make_pair(key, std::move(LRULink<K, V>(key, value))));
+    if (emplaced.second) {
+      _access_list.insert_head(&emplaced.first->second);
+      _current_size += val;
+    } else {
+      _access_list.move_to_head(&emplaced.first->second);
+      _current_size -= _count(emplaced.first->second.value.get());
+      emplaced.first->second.value = value;
+      _current_size += val;
+    }
+  }
 };
+
 } // namespace cache
