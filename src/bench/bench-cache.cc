@@ -11,35 +11,35 @@
 /**
 
 build$ exe/bench-cache -minimal -iters 5
-trace              cache            hits   misses   evicts      p    hit %
---------------------------------------------------------------------------
-seq-cycle-10%      arc-25          98000     2000        0      0       98
-seq-cycle-10%      lru-25          98000     2000        0      0       98
-seq-cycle-10%      farc-25-400     98000     2000        0      0       98
+trace              cache           hits   misses   evicts      p    hit %
+-------------------------------------------------------------------------
+seq-cycle-10%      arc-25         18000     2000        0      0       90
+seq-cycle-10%      lru-25         18000     2000        0      0       90
+seq-cycle-10%      farc-25-400    18000     2000        0      0       90
 
-seq-cycle-50%      arc-25           2501    97499    92499   3750        2
-seq-cycle-50%      lru-25              0   100000    95000      0        0
-seq-cycle-50%      farc-25-400      2500    97500    92500      0        2
+seq-cycle-50%      arc-25             1    19999    14999   5000        0
+seq-cycle-50%      lru-25             0    20000    15000      0        0
+seq-cycle-50%      farc-25-400     2500    17500    12500   5000       12
 
-seq-unique         arc-25              0   100000    95000      0        0
-seq-unique         lru-25              0   100000    95000      0        0
-seq-unique         farc-25-400      2500    97500    92500      0        2
+seq-unique         arc-25             0    20000    15000      0        0
+seq-unique         lru-25             0    20000    15000      0        0
+seq-unique         farc-25-400        0    20000    15000      0        0
 
-small-big-cycle    arc-25         108000    92000    87000      0       54
-small-big-cycle    lru-25         100000   100000    95000      0       50
-small-big-cycle    farc-25-400    103500    96500    91500      0       51
+small-big-cycle    arc-25         40000    20000    15000      0       66
+small-big-cycle    lru-25         40000    20000    15000      0       66
+small-big-cycle    farc-25-400    40000    20000    15000      0       66
 
-zipf-.7            arc-25          66602    33398    28398   1024       66
-zipf-.7            lru-25          51784    48216    43216      0       51
-zipf-.7            farc-25-400     53025    46975    41975      0       53
+zipf-.7            arc-25          9517    10483     5483   1021       47
+zipf-.7            lru-25          9384    10616     5616      0       46
+zipf-.7            farc-25-400     9517    10483     5483   1105       47
 
-zipf-1             arc-25          80782    19218    14218      0       80
-zipf-1             lru-25          79825    20175    15175      0       79
-zipf-1             farc-25-400     80782    19218    14218      0       80
+zipf-1             arc-25         14618     5382      382     10       73
+zipf-1             lru-25         14617     5383      383      0       73
+zipf-1             farc-25-400    14618     5382      382     10       73
 
-zipf-seq           arc-25         128184   171816   166816     37       42
-zipf-seq           lru-25         109344   190656   185656      0       36
-zipf-seq           farc-25-400    111015   188985   183985      0       37
+zipf-seq           arc-25         24059    35941    30941      7       40
+zipf-seq           lru-25         20896    39104    34104      0       34
+zipf-seq           farc-25-400    22567    37433    32433      0       37
 
 **/
 
