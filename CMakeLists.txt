@@ -31,9 +31,12 @@ endif ()
 #
 # Third party dependencies
 #
-add_subdirectory(thirdparty)
-set(LIBS ${LIBS} gflags_nothreads_static)
+add_subdirectory(thirdparty/gflags)
+add_subdirectory(thirdparty/gtest)
+set(LIBS ${LIBS} gflags::gflags)
 set(LIBS ${LIBS} gtest_main)
+
+
 
 #
 # Includes

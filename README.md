@@ -12,8 +12,14 @@ dev/download-thirdparty.sh
 
 ```shell
 mkdir -p build && cd build && cmake -H.. -B.
-make
+make -j8
 ./exe/build-check
+```
+
+### Test
+``shell
+cd build
+make test
 ```
 
 ## CI
