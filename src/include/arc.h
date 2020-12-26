@@ -12,7 +12,6 @@
 #include "include/cache.h"
 #include "include/lru.h"
 #include "util/lock.h"
-#include "util/nop-lock.h"
 
 namespace cache {
 

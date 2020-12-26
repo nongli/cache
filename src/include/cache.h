@@ -21,6 +21,16 @@ struct Stats {
   }
 };
 
+// A nop lock for when fine-grained locking in LRU makes no sense since coarse
+// grained locking is used externally.
+class NopLock final {
+public:
+  constexpr NopLock() = default;
+  constexpr void lock() {}
+  constexpr void unlock() {}
+  constexpr bool try_lock() { return true; }
+};
+
 template <typename K, typename V>
 class Cache {
  public:
