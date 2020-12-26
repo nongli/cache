@@ -37,13 +37,14 @@ public:
     // Check if the key is already in LRU cache.
     // We do so by removing the item since well that is what we would do
     // eventually anyways.
-    if (_lru_cache.remove_from_cache(key)) {
+    if (_lru_cache.contains(key)) {
       // Given it was already in the LRU cache, we need to add it
       // to the lfu cache and call it a day.
       // No evict is safe here since we are removing from LRU moving
       // to LFU.
+      _lru_cache.remove_from_cache(key);
       _lfu_cache.add_to_cache_no_evict(key, value);
-    } else if (_lfu_cache.get(key)) {
+    } else if (_lfu_cache.contains(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
     } else if (_lru_ghost.contains(key)) {
@@ -115,9 +116,10 @@ public:
   // Get an item from the cache. This is one half of what the ARC paper does.
   std::shared_ptr<V> get(const K& key) {
     std::lock_guard<Lock> l(_lock);
-    auto value = _lfu_cache.get(key);
-    if (!value) {
-      if ((value = _lru_cache.remove_from_cache(key))) {
+    std::shared_ptr<V> value(nullptr);
+    if (!_lfu_cache.contains(key)) {
+      if (_lru_cache.contains(key)) {
+        value = _lru_cache.remove_from_cache(key);
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache_no_evict(key, insertable);
         ++_stats.num_hits;
@@ -132,6 +134,7 @@ public:
         assert((!(lru_ghost || lfu_ghost)) || (lru_ghost ^ lfu_ghost));
       }
     } else {
+      value = _lfu_cache.get(key);
       ++_stats.num_hits;
       ++_stats.lfu_hits;
     }
@@ -141,6 +144,7 @@ public:
 
   // Remove key from the cache.
   std::shared_ptr<V> remove_from_cache(const K& key) {
+    // Semantics make this safe.
     std::lock_guard<Lock> l(_lock);
     auto value = _lru_cache.remove_from_cache(key);
     if (value) {
