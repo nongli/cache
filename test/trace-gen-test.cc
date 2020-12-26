@@ -45,16 +45,16 @@ TEST(CycleTrace, Basic) {
 
 TEST(ZipfianTrace, Basic) {
   FixedTrace trace1(TraceGen::ZipfianDistribution(0, 100, 100, 0.7, "v"));
-  ASSERT_EQ(54, ComputeUniqueKeys(&trace1));
+  ASSERT_EQ(57, ComputeUniqueKeys(&trace1));
 
   FixedTrace trace2(TraceGen::ZipfianDistribution(0, 100, 100, 1, "v"));
-  ASSERT_EQ(45, ComputeUniqueKeys(&trace2));
+  ASSERT_EQ(49, ComputeUniqueKeys(&trace2));
 
   FixedTrace trace3(TraceGen::ZipfianDistribution(0, 100, 20, 0.7, "v"));
   ASSERT_EQ(20, ComputeUniqueKeys(&trace3));
 
   FixedTrace trace4(TraceGen::ZipfianDistribution(0, 100, 20, 1, "v"));
-  ASSERT_EQ(19, ComputeUniqueKeys(&trace4));
+  ASSERT_EQ(20, ComputeUniqueKeys(&trace4));
 }
 
 TEST(Zipf, Basic) {
