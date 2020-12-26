@@ -11,7 +11,6 @@
 
 #include "include/cache.h"
 #include "include/lru.h"
-#include "include/stats.h"
 #include "util/lock.h"
 #include "util/nop-lock.h"
 

@@ -1,6 +1,5 @@
 #include "include/arc.h"
 #include "include/flex-arc.h"
-#include "include/stats.h"
 #include "util/table-printer.h"
 #include "util/trace-gen.h"
 

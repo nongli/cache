@@ -12,7 +12,6 @@
 #include <unordered_map>
 
 #include "include/cache.h"
-#include "include/stats.h"
 #include "util/lock.h"
 
 // FIXME: Maybe move to different namespace?
