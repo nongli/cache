@@ -17,7 +17,8 @@ make -j8
 ```
 
 ### Test
-``shell
+
+```shell
 cd build
 make test
 ```

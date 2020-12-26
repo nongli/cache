@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # General compiler flags
 set(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare -Werror=switch -Werror=return-type")
+set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -Wno-error=unused-function")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror -fno-omit-frame-pointer -fsanitize=address,undefined")
@@ -31,12 +32,13 @@ endif ()
 #
 # Third party dependencies
 #
+set(gflags_DIR ${CMAKE_SOURCE_DIR}/thirdparty/gflags)
 add_subdirectory(thirdparty/gflags)
+#add_subdirectory(thirdparty/glog)
 add_subdirectory(thirdparty/gtest)
 set(LIBS ${LIBS} gflags::gflags)
+#set(LIBS ${LIBS} glog::glog)
 set(LIBS ${LIBS} gtest_main)
-
-
 
 #
 # Includes
@@ -44,6 +46,7 @@ set(LIBS ${LIBS} gtest_main)
 include_directories(src)
 include_directories(thirdparty/gtest/googletest/include)
 include_directories(thirdparty/gflags/include)
+#include_directories(thirdparty/glog/src)
 
 #
 # Subdirectories

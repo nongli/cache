@@ -14,7 +14,7 @@
 #include "include/stats.h"
 
 namespace cache {
-struct Hello {};
+
 template <typename K, typename V> class FlexARC : public Cache<K, V> {
 
 public:

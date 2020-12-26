@@ -26,10 +26,6 @@ public:
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return _p; }
 
-  AdaptiveCache() = delete;
-  AdaptiveCache(const AdaptiveCache&) = delete;
-  AdaptiveCache operator=(const AdaptiveCache&) = delete;
-
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
@@ -141,6 +137,10 @@ public:
     _lfu_ghost.Clear();
     _p = 0;
   }
+
+  AdaptiveCache() = delete;
+  AdaptiveCache(const AdaptiveCache&) = delete;
+  AdaptiveCache operator=(const AdaptiveCache&) = delete;
 
 protected:
   inline void adapt_lru_ghost_hit() {
