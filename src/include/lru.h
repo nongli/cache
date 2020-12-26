@@ -164,6 +164,7 @@ public:
   int64_t size() const { return _current_size; }
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return 0; }
+  inline int64_t max_p() const { return 0; }
 
   // Get value from the cache. If found bumps the element up in the LRU list.
   std::shared_ptr<V> get(const K& key) {

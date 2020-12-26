@@ -23,14 +23,16 @@ public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size
   // size.
   FlexARC(int64_t size, int64_t ghost_size)
-      : _max_size{size}, _p{0}, _ghost_size{ghost_size}, _lru_cache{size},
-        _lfu_cache{size}, _lru_ghost{ghost_size}, _lfu_ghost{ghost_size} {}
+      : _max_size{size}, _p{0}, _max_p{0}, _ghost_size{ghost_size},
+        _lru_cache{size}, _lfu_cache{size}, _lru_ghost{ghost_size},
+        _lfu_ghost{ghost_size} {}
 
   inline int64_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   inline int64_t max_size() const { return _max_size; }
   inline int64_t ghost_size() const { return _ghost_size; }
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return _p; }
+  inline int64_t max_p() const { return _max_p; }
 
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
@@ -155,6 +157,7 @@ protected:
       delta = (_lfu_ghost.size() / _lru_ghost.size());
     }
     _p = std::min(_p + delta, _max_size);
+    _max_p = std::max(_max_p, _p);
   }
 
   inline void adapt_lfu_ghost_hit() {
@@ -166,6 +169,7 @@ protected:
       delta = _lru_ghost.size() / _lfu_ghost.size();
     }
     _p = std::max(_p - delta, int64_t(0));
+    // Don't need to update _max_p here
   }
 
   inline void replace(bool in_lfu_ghost) {
@@ -206,6 +210,7 @@ private:
   Lock _lock;
   int64_t _max_size;
   int64_t _p;
+  int64_t _max_p;
   int64_t _ghost_size;
   LRUCache<K, V, NopLock> _lru_cache;
   LRUCache<K, V, NopLock> _lfu_cache;

@@ -9,36 +9,37 @@
 #include <map>
 
 /**
-exe/bench-cache --iters 5 -minimal
-trace              cache            hits   misses   evicts      p   hit %   LRU %   LFU %   miss %   LRU Ghost %    LFU Ghost %
--------------------------------------------------------------------------------------------------------------------------------
-seq-cycle-10%      arc-25          98000     2000        0      0      98       2      97        2             0              0
-seq-cycle-10%      lru-25          98000     2000        0      0      98       -       -        2             -              -
-seq-cycle-10%      farc-25-400     98000     2000        0      0      98       2      97        2             0              0
+  exe/bench-cache --iters 5 -minimal
+  trace              cache            hits   misses   evicts      p   max_p   hit %   LRU %   LFU %   miss %   LRU Ghost %    LFU Ghost %
+  ---------------------------------------------------------------------------------------------------------------------------------------
+  seq-cycle-10%      arc-25          98000     2000        0      0       0      98       2      97        2             0              0
+  seq-cycle-10%      lru-25          98000     2000        0      -       -      98       -       -        2             -              -
+  seq-cycle-10%      farc-25-400     98000     2000        0      0       0      98       2      97        2             0              0
 
-seq-cycle-50%      arc-25           2501    97499    92499   3750       2     100       0       97             0             73
-seq-cycle-50%      lru-25              0   100000    95000      0       0       -       -      100             -              -
-seq-cycle-50%      farc-25-400      2500    97500    92500      0       2     100       0       97             0             89
+  seq-cycle-50%      arc-25           2501    97499    92499   3750    5000       2     100       0       97             0             73
+  seq-cycle-50%      lru-25              0   100000    95000      -       -       0       -       -      100             -              -
+  seq-cycle-50%      farc-25-400      2500    97500    92500      0    5000       2     100       0       97             0             89
 
-seq-unique         arc-25              0   100000    95000      0       0       -       -      100             0              0
-seq-unique         lru-25              0   100000    95000      0       0       -       -      100             -              -
-seq-unique         farc-25-400      2500    97500    92500      0       2     100       0       97             0             79
+  seq-unique         arc-25              0   100000    95000      0    5000       0       -       -      100             0              0
+  seq-unique         lru-25              0   100000    95000      -       -       0       -       -      100             -              -
+  seq-unique         farc-25-400      2500    97500    92500      0    5000       2     100       0       97             0             79
 
-small-big-cycle    arc-25         200800    99200    94200      0      66       0      99       33             0              0
-small-big-cycle    lru-25         200000   100000    95000      0      66       -       -       33             -              -
-small-big-cycle    farc-25-400    202600    97400    92400      0      67       1      98       32             0             79
+  small-big-cycle    arc-25         200800    99200    94200      0    5000      66       0      99       33             0              0
+  small-big-cycle    lru-25         200000   100000    95000      -       -      66       -       -       33             -              -
+  small-big-cycle    farc-25-400    202600    97400    92400      0    5000      67       1      98       32             0             79
 
-zipf-.7            arc-25          66352    33648    28648   1061      66       3      96       33             0              3
-zipf-.7            lru-25          51667    48333    43333      0      51       -       -       48             -              -
-zipf-.7            farc-25-400     52870    47130    42130      0      52       4      95       47             0             80
+  zipf-.7            arc-25          66352    33648    28648   1061    5000      66       3      96       33             0              3
+  zipf-.7            lru-25          51667    48333    43333      -       -      51       -       -       48             -              -
+  zipf-.7            farc-25-400     52870    47130    42130      0    5000      52       4      95       47             0             80
 
-zipf-1             arc-25          80558    19442    14442      0      80       3      96       19             0             72
-zipf-1             lru-25          79849    20151    15151      0      79       -       -       20             -              -
-zipf-1             farc-25-400     80558    19442    14442      0      80       3      96       19             0             72
+  zipf-1             arc-25          80558    19442    14442      0    5000      80       3      96       19             0             72
+  zipf-1             lru-25          79849    20151    15151      -       -      79       -       -       20             -              -
+  zipf-1             farc-25-400     80558    19442    14442      0    5000      80       3      96       19             0             72
 
-zipf-seq           arc-25         128581   171419   166419     31      42       2      97       57             0             28
-zipf-seq           lru-25         109112   190888   185888      0      36       -       -       63             -              -
-zipf-seq           farc-25-400    110764   189236   184236      0      36       2      97       63             0             89
+  zipf-seq           arc-25         128581   171419   166419     31    5000      42       2      97       57             0             28
+  zipf-seq           lru-25         109112   190888   185888      -       -      36       -       -       63             -              -
+  zipf-seq           farc-25-400    110764   189236   184236      0    5000      36       2      97       63             0             89
+
 **/
 
 DEFINE_bool(include_lru, true, "Include lru cache in tests.");
@@ -97,7 +98,13 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   row.push_back(to_string(stats.num_hits));
   row.push_back(to_string(stats.num_misses));
   row.push_back(to_string(stats.num_evicted));
-  row.push_back(to_string(cache->p()));
+  if (type == CacheType::Lru) {
+    row.push_back("-");
+    row.push_back("-");
+  } else {
+    row.push_back(to_string(cache->p()));
+    row.push_back(to_string(cache->max_p()));
+  }
   row.push_back(
       to_string(stats.num_hits * 100 / (stats.num_hits + stats.num_misses)));
   if (type == CacheType::Lru) {
@@ -158,6 +165,7 @@ int main(int argc, char** argv) {
   results.AddColumn("misses", false);
   results.AddColumn("evicts", false);
   results.AddColumn("p", false);
+  results.AddColumn("max_p", false);
   results.AddColumn("hit %", false);
   results.AddColumn("LRU %", false);
   results.AddColumn("LFU %", false);
