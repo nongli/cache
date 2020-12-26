@@ -127,7 +127,7 @@ public:
     }
   }
 
-  void Clear() {
+  void clear() {
     _head = nullptr;
     _tail = nullptr;
     _length = 0;
@@ -174,7 +174,7 @@ public:
 
   // Get value from the cache. If found bumps the element up in the LRU list.
   std::shared_ptr<V> get(const K& key) {
-    std::lock_guard l(_lock);
+    std::lock_guard<Lock> l(_lock);
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       ++_stats.num_hits;
@@ -190,7 +190,7 @@ public:
   // where we don't have real values. Note we do bump the page up for contains,
   // this matches what ARC states in Figure 4.
   inline bool contains(const K& key) {
-    std::lock_guard l(_lock);
+    std::lock_guard<Lock> l(_lock);
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
@@ -205,13 +205,13 @@ public:
   inline void add_to_cache_no_evict(const K& key, std::shared_ptr<V> value) {
     // FIXME Maybe move to C++17 where structured binding makes this more
     // pleasant.
-    std::lock_guard l(_lock);
+    std::lock_guard<Lock> l(_lock);
     add_to_cache_no_evict_impl(key, value);
   }
 
   // Evict an entry and return the evicted entry's key.
   inline std::optional<K> evict_entry() {
-    std::lock_guard l(_lock);
+    std::lock_guard<Lock> l(_lock);
     return evict_entry_impl();
   }
 
@@ -222,7 +222,7 @@ public:
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
     // FIXME: Need to notify on eviction, this is something that the ghost
     // lists need. Alternately the no_evict form is enough?
-    std::lock_guard l(_lock);
+    std::lock_guard<Lock> l(_lock);
     add_to_cache_no_evict_impl(key, value);
     assert(_current_size == _access_map.size());
     int64_t before = _current_size;
@@ -235,7 +235,7 @@ public:
 
   // Remove element from cache, return value.
   std::shared_ptr<V> remove_from_cache(const K& key) {
-    std::lock_guard l(_lock);
+    std::lock_guard<Lock> l(_lock);
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.remove(&elt->second);
@@ -253,11 +253,12 @@ public:
   // Decrease the maximum cache size.
   void decrease_size(int64_t delta) { _max_size -= delta; }
 
-  void Clear() {
+  void clear() {
+    std::lock_guard<Lock> l(_lock);
     _current_size = 0;
-    _stats.Clear();
+    _stats.clear();
     _access_map.clear();
-    _access_list.Clear();
+    _access_list.clear();
   }
 
   // FIXME: Do we want a default size?

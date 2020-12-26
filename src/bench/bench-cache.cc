@@ -61,7 +61,7 @@ enum class CacheType { Lru, Arc, Farc };
 template <class Cache>
 void Test(TablePrinter* results, int n, const string& name, Trace* trace,
           Cache* cache, CacheType type, int iters) {
-  cache->Clear();
+  cache->clear();
 
   for (int i = 0; i < iters; ++i) {
     trace->Reset();

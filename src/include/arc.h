@@ -7,15 +7,17 @@
 #include <algorithm>
 #include <cassert>
 #include <memory>
-#include <tuple>
+#include <mutex>
 
 #include "include/cache.h"
 #include "include/lru.h"
 #include "include/stats.h"
+#include "util/lock.h"
 
 namespace cache {
 
-template <typename K, typename V> class AdaptiveCache : public Cache<K, V> {
+template <typename K, typename V, typename Lock = WordLock>
+class AdaptiveCache : public Cache<K, V> {
 public:
   AdaptiveCache(int64_t size)
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
@@ -29,6 +31,7 @@ public:
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
+    std::lock_guard<Lock> l(_lock);
     // Check if the key is already in LRU cache.
     // We do so by removing the item since well that is what we would do
     // eventually anyways.
@@ -92,6 +95,7 @@ public:
 
   // Get an item from the cache. This is one half of what the ARC paper does.
   std::shared_ptr<V> get(const K& key) {
+    std::lock_guard<Lock> l(_lock);
     auto value = _lfu_cache.get(key);
     if (!value) {
       if ((value = _lru_cache.remove_from_cache(key))) {
@@ -118,6 +122,7 @@ public:
 
   // Remove key from the cache.
   std::shared_ptr<V> remove_from_cache(const K& key) {
+    std::lock_guard<Lock> l(_lock);
     auto value = _lru_cache.remove_from_cache(key);
     if (value) {
       return value;
@@ -129,12 +134,13 @@ public:
     return value;
   }
 
-  void Clear() {
-    _stats.Clear();
-    _lru_cache.Clear();
-    _lfu_cache.Clear();
-    _lru_ghost.Clear();
-    _lfu_ghost.Clear();
+  void clear() {
+    std::lock_guard<Lock> l(_lock);
+    _stats.clear();
+    _lru_cache.clear();
+    _lfu_cache.clear();
+    _lru_ghost.clear();
+    _lfu_ghost.clear();
     _p = 0;
   }
 
@@ -198,6 +204,7 @@ protected:
   }
 
 private:
+  Lock _lock;
   int64_t _max_size;
   int64_t _p = 0;
   LRUCache<K, V, NoLock> _lru_cache;
