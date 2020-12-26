@@ -95,6 +95,23 @@ public:
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
   }
 
+  // Update a cached element if it exists, do nothing otherwise. Boolean returns
+  // whether or not value was updated.
+  bool update_cache(const K& key, std::shared_ptr<V> value) {
+    std::lock_guard<Lock> l(_lock);
+    if (_lru_cache.contains(key)) {
+      // Given it was already in the LRU cache, we need to add it
+      // to the lfu cache and call it a day.
+      // No evict is safe here since we are removing from LRU moving
+      // to LFU.
+      _lru_cache.remove_from_cache(key);
+      _lfu_cache.add_to_cache_no_evict(key, value);
+      return true;
+    } else {
+      return _lfu_cache.update_cache(key, value);
+    }
+  }
+
   // Get an item from the cache. This is one half of what the ARC paper does.
   std::shared_ptr<V> get(const K& key) {
     std::lock_guard<Lock> l(_lock);

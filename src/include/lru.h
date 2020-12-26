@@ -227,6 +227,20 @@ public:
     return before - _current_size;
   }
 
+  // Update a cached element if it exists, do nothing otherwise. Boolean returns
+  // whether or not value was updated.
+  bool update_cache(const K& key, std::shared_ptr<V> value) {
+    std::lock_guard<Lock> l(_lock);
+    auto elt = _access_map.find(key);
+    if (elt != _access_map.end()) {
+      _access_list.move_to_head(&elt->second);
+      elt.first->second.value = value;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   // Remove element from cache, return value.
   std::shared_ptr<V> remove_from_cache(const K& key) {
     std::lock_guard<Lock> l(_lock);
