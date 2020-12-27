@@ -1,5 +1,5 @@
 #include "gflags/gflags.h"
-#include "include/flex-arc.h"
+#include "cache/flex-arc.h"
 #include "util/compare.h"
 #include "util/trace-gen.h"
 #include <iostream>

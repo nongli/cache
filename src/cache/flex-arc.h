@@ -9,8 +9,8 @@
 #include <memory>
 #include <mutex>
 
-#include "include/cache.h"
-#include "include/lru.h"
+#include "cache/cache.h"
+#include "cache/lru.h"
 
 namespace cache {
 

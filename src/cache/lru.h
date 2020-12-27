@@ -11,7 +11,7 @@
 #include <tuple>
 #include <unordered_map>
 
-#include "include/cache.h"
+#include "cache/cache.h"
 
 // FIXME: Maybe move to different namespace?
 namespace cache {

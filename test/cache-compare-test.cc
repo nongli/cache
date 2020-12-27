@@ -1,4 +1,4 @@
-#include "include/arc.h"
+#include "cache/arc.h"
 #include "util/compare.h"
 #include "util/trace-gen.h"
 #include "gtest/gtest.h"

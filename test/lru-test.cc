@@ -1,4 +1,4 @@
-#include "include/lru.h"
+#include "cache/lru.h"
 #include "util/lock.h"
 #include "gtest/gtest.h"
 

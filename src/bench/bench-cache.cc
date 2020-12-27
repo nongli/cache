@@ -1,10 +1,9 @@
-#include "include/arc.h"
-#include "include/flex-arc.h"
+#include "cache/arc.h"
+#include "cache/flex-arc.h"
 #include "util/table-printer.h"
 #include "util/trace-gen.h"
 
 #include "gflags/gflags.h"
-
 #include <map>
 
 /**
