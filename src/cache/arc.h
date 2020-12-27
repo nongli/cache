@@ -28,11 +28,13 @@ public:
   inline int64_t max_p() const { return _max_p; }
   inline int64_t filter_size() const { return _filter.max_size(); }
   inline Lock* get_lock() { return &_lock; }
+  void enable_trace(bool v) { _trace = v; }
 
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
     std::lock_guard<Lock> l(_lock);
+    debug_trace("add");
 
     // Simple cases where it is in the LRU or LFU cache
     if (_lru_cache.contains(key)) {
@@ -117,6 +119,8 @@ public:
   // whether or not value was updated.
   bool update_cache(const K& key, std::shared_ptr<V> value) {
     std::lock_guard<Lock> l(_lock);
+    debug_trace("update_cache");
+
     if (_lru_cache.contains(key)) {
       // Given it was already in the LRU cache, we need to add it
       // to the lfu cache and call it a day.
@@ -133,6 +137,8 @@ public:
   // Get an item from the cache. This is one half of what the ARC paper does.
   std::shared_ptr<V> get(const K& key) {
     std::lock_guard<Lock> l(_lock);
+    debug_trace("get");
+
     std::shared_ptr<V> value(nullptr);
     if (!_lfu_cache.contains(key)) {
       if (_lru_cache.contains(key)) {
@@ -161,8 +167,10 @@ public:
 
   // Remove key from the cache.
   std::shared_ptr<V> remove_from_cache(const K& key) {
-    // Semantics make this safe.
     std::lock_guard<Lock> l(_lock);
+    debug_trace("remove_from_cache");
+
+    // Semantics make this safe.
     auto value = _lru_cache.remove_from_cache(key);
     if (value) {
       return value;
@@ -176,6 +184,8 @@ public:
 
   void clear() {
     std::lock_guard<Lock> l(_lock);
+    debug_trace("clear");
+
     _stats.clear();
     _lru_cache.clear();
     _lfu_cache.clear();
@@ -183,6 +193,7 @@ public:
     _lfu_ghost.clear();
     _filter.clear();
     _p = 0;
+    _op_id = 0;
   }
 
   AdaptiveCache() = delete;
@@ -246,6 +257,18 @@ protected:
     ++_stats.num_evicted;
   }
 
+  // Lock taken
+  void debug_trace(const char* op) {
+    if (!_trace) return;
+    printf("%s,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
+        op, _op_id++, _p,
+        _lru_cache.size(),
+        _lfu_cache.size(),
+        _lru_ghost.size(),
+        _lfu_ghost.size(),
+        _filter.size());
+  }
+
 private:
   Lock _lock;
   int64_t _max_size;
@@ -257,6 +280,9 @@ private:
   LRUCache<K, V, NopLock> _lfu_ghost;
   LRUCache<K, V, NopLock> _filter;
   Stats _stats;
+
+  int64_t _op_id = 0;
+  bool _trace = false;
 };
 
 } // namespace cache

@@ -44,6 +44,7 @@ DEFINE_bool(include_lru, true, "Include lru cache in tests.");
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
 DEFINE_int64(iters, 2, "Number of times to repeated the trace.");
+DEFINE_string(trace, "", "Name of trace to run.");
 
 using namespace std;
 using namespace cache;
@@ -161,6 +162,14 @@ void Test(TablePrinter* results, int n, int iters) {
   }
 }
 
+void AddTrace(string_view name, Trace* trace) {
+  if (!FLAGS_trace.empty() && FLAGS_trace != name) {
+    delete trace;
+    return;
+  }
+  traces[string(name)] = trace;
+}
+
 int main(int argc, char** argv) {
   gflags::SetUsageMessage("Cache Comparison");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -186,34 +195,34 @@ int main(int argc, char** argv) {
   //
   // Configure traces
   //
-  traces["seq-unique"] = new FixedTrace(TraceGen::CycleTrace(keys, keys, "v"));
-  traces["seq-cycle-10%"] =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v"));
-  traces["seq-cycle-50%"] =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v"));
-  traces["zipf-1"] =
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 1, "v"));
-  traces["zipf-.7"] =
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
+  AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, "v")));
+  AddTrace("seq-cycle-10%",
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v")));
+  AddTrace("seq-cycle-50%",
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v")));
+  AddTrace("zipf-1",
+      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 1, "v")));
+  AddTrace("zipf-.7",
+      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v")));
 
   // zipf, all keys, zipf
   FixedTrace* zip_seq =
       new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
   zip_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
   zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
-  traces["zipf-seq"] = zip_seq;
+  AddTrace("zipf-seq", zip_seq);
 
   // tiny + all keys
   FixedTrace* tiny_seq_cycle = new FixedTrace(
       TraceGen::CycleTrace(keys, keys * .01, "v"));
   tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  traces["tiny-seq-cycle"] = tiny_seq_cycle;
+  AddTrace("tiny-seq-cycle", tiny_seq_cycle);
 
   // medium + all keys
   FixedTrace* med_seq_cycle = new FixedTrace(
       TraceGen::CycleTrace(keys, keys * .25, "v"));
   med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  traces["med-seq-cycle"] = med_seq_cycle;
+  AddTrace("med-seq-cycle", med_seq_cycle);
 
   //
   // Configure caches
