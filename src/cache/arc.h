@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 #include <memory>
 #include <mutex>
 
@@ -264,13 +265,13 @@ protected:
   }
 
   // Lock taken
-  void debug_trace(const char* op) {
+  inline void debug_trace(const char* op) {
     if (!_trace) {
       return;
     }
-    printf("%s,%lld,%lld,%lld,%lld,%lld,%lld,%lld\n", op, _op_id++, _p,
-           _lru_cache.size(), _lfu_cache.size(), _lru_ghost.size(),
-           _lfu_ghost.size(), _filter.size());
+    std::cout << op << "," << _op_id++ << "," << _p << "," << _lru_cache.size()
+              << "," << _lfu_cache.size() << "," << _lru_ghost.size() << ","
+              << _lfu_ghost.size() << "," << _filter.size() << std::endl;
   }
 
   inline void fit(bool lfu_hit) {
