@@ -17,7 +17,7 @@ namespace cache {
 template <typename K, typename V, typename Lock = NopLock>
 class AdaptiveCache : public Cache<K, V> {
 public:
-  AdaptiveCache(int64_t size, int64_t filter_size=0)
+  AdaptiveCache(int64_t size, int64_t filter_size = 0)
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
         _lfu_ghost{size}, _filter(filter_size) {}
 
@@ -49,8 +49,11 @@ public:
       assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
       return;
     }
+    bool lru_ghost_hit = _lru_ghost.contains(key);
+    bool lfu_ghost_hit = _lfu_ghost.contains(key);
 
-    if (_filter.max_size() > 0) {
+    // Filter should only kick in for entries evicted far enough in the past.
+    if (!(lfu_ghost_hit || lru_ghost_hit) && _filter.max_size() > 0) {
       // Add a "double-hit" pre filter. This is intended to prevent single scan
       // keys from invalidating the cache.
       if (!_filter.contains(key)) {
@@ -60,7 +63,7 @@ public:
       }
     }
 
-    if (_lru_ghost.contains(key)) {
+    if (lru_ghost_hit) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
@@ -69,7 +72,7 @@ public:
       // Add to LFU cache
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lru_ghost.remove_from_cache(key);
-    } else if (_lfu_ghost.contains(key)) {
+    } else if (lfu_ghost_hit) {
       // Case III
       adapt_lfu_ghost_hit();
       // Make space.
