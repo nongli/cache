@@ -52,7 +52,7 @@ public:
       _lfu_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       // Now we might need to make space.
-      replace(false);
+      replace(true);
     } else if (_lru_ghost.contains(key)) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
@@ -74,33 +74,22 @@ public:
       replace(true);
     } else {
       // Case IV
-      int64_t lru_size = _lru_cache.size();
-      int64_t total_size = _lfu_cache.size() + lru_size;
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
-      if (lru_size == _max_size) {
-        Sizer count;
-        int64_t vsize = count(value.get());
-        // We are using the entire LRU cache, we need to evict items
-        // in order to make space.
-        while (lru_size + vsize > _max_size) {
-          auto evicted = _lru_cache.evict_entry();
+      bool lru_only = _lru_cache.size() == _max_size;
+      _lru_cache.add_to_cache_no_evict(key, value);
+      if (lru_only) {
+        while (_lru_cache.size() > _max_size) {
+          // We need to evict something, so...
+          std::optional<K> evicted = _lru_cache.evict_entry();
           if (evicted) {
             _lru_ghost.add_to_cache(*evicted, nullptr);
             assert(!_lfu_ghost.contains(*evicted) &&
                    !_lru_cache.contains(*evicted));
-            _stats.lru_evicts++;
-            _stats.num_evicted++;
+            ++_stats.lru_evicts;
           }
-          lru_size = _lru_cache.size();
         }
-        _lru_cache.add_to_cache_no_evict(key, value);
-      } else if (total_size >= _max_size) {
-        // IV(b)
-        _lru_cache.add_to_cache_no_evict(key, value);
-        replace(false);
       } else {
-        // Had space available
-        _lru_cache.add_to_cache_no_evict(key, value);
+        replace(false);
       }
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);

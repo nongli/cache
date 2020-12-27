@@ -61,4 +61,19 @@ public:
   }
 };
 
+// Count by size
+class StringSizer {
+public:
+  StringSizer() {}
+  StringSizer(const StringSizer&) = default;
+  StringSizer(StringSizer&&) = default;
+  inline int64_t operator()(const std::string* v) const {
+    if (v) {
+      return v->size();
+    } else {
+      return 0;
+    }
+  }
+};
+
 } // namespace cache

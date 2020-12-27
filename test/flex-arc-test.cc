@@ -27,6 +27,24 @@ TEST(FlexArc, SmallCache) {
   ASSERT_EQ(cache.get("Baby Yoda"), nullptr);
 }
 
+TEST(FlexArc, SmallCacheSized) {
+  FlexARC<string, string, NopLock, StringSizer> cache(16, 4);
+  ASSERT_EQ(cache.size(), 0);
+  cache.add_to_cache("K0", make_shared<string>("Abcd"));
+  ASSERT_EQ(cache.size(), 4);
+  cache.add_to_cache("K0", make_shared<string>("Abcde"));
+  ASSERT_EQ(cache.size(), 5);
+  cache.add_to_cache("K0", make_shared<string>("012345678901234567"));
+  ASSERT_EQ(cache.size(), 0);
+  cache.add_to_cache("K0", make_shared<string>("0123"));
+  cache.add_to_cache("K1", make_shared<string>("01234"));
+  cache.add_to_cache("K2", make_shared<string>("012345"));
+  const string& v = *cache.get("K1");
+  ASSERT_TRUE(v == "01234");
+  cache.add_to_cache("K3", make_shared<string>("012"));
+  ASSERT_EQ(cache.size(), 12);
+}
+
 TEST(FlexArc, LRUOnly) {
   FlexARC<string, string> cache(2, 2);
   ASSERT_EQ(cache.size(), 0);

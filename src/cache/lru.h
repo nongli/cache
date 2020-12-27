@@ -272,7 +272,7 @@ private:
   int64_t _current_size;
   LRUList<K, V> _access_list;
   std::unordered_map<K, LRULink<K, V>> _access_map;
-  ElementCount<V> _count;
+  VSize _count;
   Stats _stats;
 
   // FIXME: We return a key rather than a k,v pair since ARC does not need a
