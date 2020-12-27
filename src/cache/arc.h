@@ -265,9 +265,10 @@ protected:
 
   // Lock taken
   void debug_trace(const char* op) {
-    if (!_trace)
+    if (!_trace) {
       return;
-    printf("%s,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n", op, _op_id++, _p,
+    }
+    printf("%s,%lld,%lld,%lld,%lld,%lld,%lld,%lld\n", op, _op_id++, _p,
            _lru_cache.size(), _lfu_cache.size(), _lru_ghost.size(),
            _lfu_ghost.size(), _filter.size());
   }
