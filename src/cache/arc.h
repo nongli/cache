@@ -14,7 +14,8 @@
 
 namespace cache {
 
-template <typename K, typename V, typename Lock = NopLock>
+template <typename K, typename V, typename Lock = NopLock,
+          typename Sizer = ElementCount<V>>
 class AdaptiveCache : public Cache<K, V> {
 public:
   AdaptiveCache(int64_t size, int64_t filter_size = 0)
@@ -44,11 +45,13 @@ public:
       // to LFU.
       _lru_cache.remove_from_cache(key);
       _lfu_cache.add_to_cache_no_evict(key, value);
+      fit(false);
       assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
       return;
     } else if (_lfu_cache.contains(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
+      fit(true);
       assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
       return;
     }
@@ -75,6 +78,7 @@ public:
       // Add to LFU cache
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lru_ghost.remove_from_cache(key);
+      fit(false);
     } else if (lfu_ghost_hit) {
       // Case III
       adapt_lfu_ghost_hit();
@@ -82,6 +86,7 @@ public:
       replace(true);
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lfu_ghost.remove_from_cache(key);
+      fit(true);
     } else {
       // Case IV
       int64_t lru_size = _lru_cache.size() + _lru_ghost.size();
@@ -111,6 +116,7 @@ public:
         replace(false);
       }
       _lru_cache.add_to_cache_no_evict(key, value);
+      fit(false);
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
   }
@@ -259,14 +265,17 @@ protected:
 
   // Lock taken
   void debug_trace(const char* op) {
-    if (!_trace) return;
-    printf("%s,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
-        op, _op_id++, _p,
-        _lru_cache.size(),
-        _lfu_cache.size(),
-        _lru_ghost.size(),
-        _lfu_ghost.size(),
-        _filter.size());
+    if (!_trace)
+      return;
+    printf("%s,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n", op, _op_id++, _p,
+           _lru_cache.size(), _lfu_cache.size(), _lru_ghost.size(),
+           _lfu_ghost.size(), _filter.size());
+  }
+
+  inline void fit(bool lfu_hit) {
+    while (size() > _max_size) {
+      replace(lfu_hit);
+    }
   }
 
 private:
@@ -274,8 +283,8 @@ private:
   int64_t _max_size;
   int64_t _p = 0;
   int64_t _max_p = 0;
-  LRUCache<K, V, NopLock> _lru_cache;
-  LRUCache<K, V, NopLock> _lfu_cache;
+  LRUCache<K, V, NopLock, Sizer> _lru_cache;
+  LRUCache<K, V, NopLock, Sizer> _lfu_cache;
   LRUCache<K, V, NopLock> _lru_ghost;
   LRUCache<K, V, NopLock> _lfu_ghost;
   LRUCache<K, V, NopLock> _filter;
