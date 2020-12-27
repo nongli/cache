@@ -15,6 +15,7 @@ struct Stats {
   int64_t lru_evicts = 0;
   int64_t lfu_ghost_hits = 0;
   int64_t lru_ghost_hits = 0;
+  int64_t arc_filter = 0;
 
   void clear() {
     memset(this, 0, sizeof(Stats));

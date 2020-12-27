@@ -80,7 +80,11 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   row.push_back(name);
   switch (type) {
   case CacheType::Arc:
-    row.push_back("arc-" + to_string(cache->max_size() * 100 / n));
+    if (cache->filter_size() > 0) {
+      row.push_back("arc-" + to_string(cache->max_size() * 100 / n) + "-filter");
+    } else {
+      row.push_back("arc-" + to_string(cache->max_size() * 100 / n));
+    }
     break;
   case CacheType::Lru:
     row.push_back("lru-" + to_string(cache->max_size() * 100 / n));
@@ -132,6 +136,11 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
       row.push_back("-");
     }
   }
+  if (stats.arc_filter > 0) {
+    row.push_back(to_string(stats.arc_filter));
+  } else {
+    row.push_back("-");
+  }
 
   results->AddRow(row);
 }
@@ -171,6 +180,7 @@ int main(int argc, char** argv) {
   results.AddColumn("miss %", false);
   results.AddColumn("LRU Ghost %", false);
   results.AddColumn("LFU Ghost %", false);
+  results.AddColumn("filters", false);
 
   const int keys = FLAGS_unique_keys;
 
@@ -211,6 +221,7 @@ int main(int argc, char** argv) {
   //
   if (FLAGS_minimal) {
     arcs.push_back(new AdaptiveCache<string, string>(keys * .25));
+    arcs.push_back(new AdaptiveCache<string, string>(keys * .25, keys * .5));
     farcs.push_back(new FlexARC<string, string>(keys * .25, keys));
     lrus.push_back(new LRUCache<string, string>(keys * .25));
   } else {

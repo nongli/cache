@@ -17,23 +17,23 @@ namespace cache {
 template <typename K, typename V, typename Lock = NopLock>
 class AdaptiveCache : public Cache<K, V> {
 public:
-  AdaptiveCache(int64_t size)
+  AdaptiveCache(int64_t size, int64_t filter_size=0)
       : _max_size{size}, _lru_cache{size}, _lfu_cache{size}, _lru_ghost{size},
-        _lfu_ghost{size} {}
+        _lfu_ghost{size}, _filter(filter_size) {}
 
   inline int64_t max_size() const { return _max_size; }
   inline int64_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return _p; }
   inline int64_t max_p() const { return _max_p; }
+  inline int64_t filter_size() const { return _filter.max_size(); }
 
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
     std::lock_guard<Lock> l(_lock);
-    // Check if the key is already in LRU cache.
-    // We do so by removing the item since well that is what we would do
-    // eventually anyways.
+
+    // Simple cases where it is in the LRU or LFU cache
     if (_lru_cache.contains(key)) {
       // Given it was already in the LRU cache, we need to add it
       // to the lfu cache and call it a day.
@@ -41,10 +41,26 @@ public:
       // to LFU.
       _lru_cache.remove_from_cache(key);
       _lfu_cache.add_to_cache_no_evict(key, value);
+      assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
+      return;
     } else if (_lfu_cache.contains(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
-    } else if (_lru_ghost.contains(key)) {
+      assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
+      return;
+    }
+
+    if (_filter.max_size() > 0) {
+      // Add a "double-hit" pre filter. This is intended to prevent single scan
+      // keys from invalidating the cache.
+      if (!_filter.contains(key)) {
+        ++_stats.arc_filter;
+        _filter.add_to_cache(key, nullptr);
+        return;
+      }
+    }
+
+    if (_lru_ghost.contains(key)) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
@@ -161,6 +177,7 @@ public:
     _lfu_cache.clear();
     _lru_ghost.clear();
     _lfu_ghost.clear();
+    _filter.clear();
     _p = 0;
   }
 
@@ -234,6 +251,7 @@ private:
   LRUCache<K, V, NopLock> _lfu_cache;
   LRUCache<K, V, NopLock> _lru_ghost;
   LRUCache<K, V, NopLock> _lfu_ghost;
+  LRUCache<K, V, NopLock> _filter;
   Stats _stats;
 };
 
