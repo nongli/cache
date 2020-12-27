@@ -54,7 +54,6 @@ include_directories(thirdparty/gflags/include)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/exe)
 add_subdirectory(src)
 
-set(LIBS ${LIBS} Cache)
 set(LIBS ${LIBS} Util)
 
 #
@@ -63,3 +62,8 @@ set(LIBS ${LIBS} Util)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/tests)
 add_subdirectory(test)
 
+#
+# Examples
+#
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/examples)
+add_executable(example examples/example.cc)
