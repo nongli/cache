@@ -141,14 +141,6 @@ private:
   int64_t _length;
 };
 
-template <typename V> class ElementCount {
-public:
-  ElementCount() {}
-  ElementCount(const ElementCount&) = default;
-  ElementCount(ElementCount&&) = default;
-  inline int64_t operator()(const V*) const { return 1; }
-};
-
 // An LRU cache of fixed size.
 template <typename K, typename V, typename Lock = NopLock,
           typename VSize = ElementCount<V>>
@@ -231,7 +223,10 @@ public:
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
+      size_t old = _count(elt.first->second.value.get());
+      size_t nsz = _count(value.get());
       elt.first->second.value = value;
+      _current_size += (nsz - old);
       return true;
     } else {
       return false;

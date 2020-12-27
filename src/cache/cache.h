@@ -17,9 +17,7 @@ struct Stats {
   int64_t lru_ghost_hits = 0;
   int64_t arc_filter = 0;
 
-  void clear() {
-    memset(this, 0, sizeof(Stats));
-  }
+  void clear() { memset(this, 0, sizeof(Stats)); }
 };
 
 // A nop lock for when fine-grained locking in LRU makes no sense since coarse
@@ -32,14 +30,35 @@ public:
   constexpr bool try_lock() { return true; }
 };
 
-template <typename K, typename V>
-class Cache {
- public:
-  Cache() {
-  }
+template <typename K, typename V> class Cache {
+public:
+  Cache() {}
 
-  virtual ~Cache() {
+  virtual ~Cache() {}
+};
+
+// Count number of elements
+template <typename V> class ElementCount {
+public:
+  ElementCount() {}
+  ElementCount(const ElementCount&) = default;
+  ElementCount(ElementCount&&) = default;
+  inline int64_t operator()(const V*) const { return 1; }
+};
+
+// Count by size
+template <typename V> class ValueSize {
+public:
+  ValueSize() {}
+  ValueSize(const ValueSize&) = default;
+  ValueSize(ValueSize&&) = default;
+  inline int64_t operator()(const V* v) const {
+    if (v) {
+      return sizeof(V);
+    } else {
+      return 0;
+    }
   }
 };
 
-}
+} // namespace cache

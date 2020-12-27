@@ -13,8 +13,8 @@
 #include "cache/lru.h"
 
 namespace cache {
-
-template <typename K, typename V, typename Lock = NopLock>
+template <typename K, typename V, typename Lock = NopLock,
+          typename Sizer = ElementCount<V>>
 class FlexARC : public Cache<K, V> {
 public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size
@@ -40,51 +40,67 @@ public:
     // We do so by removing the item since well that is what we would do
     // eventually anyways.
     if (_lru_cache.contains(key)) {
-      _lru_cache.remove_from_cache(key);
       // Given it was already in the LRU cache, we need to add it
       // to the lfu cache and call it a day.
+      _lru_cache.remove_from_cache(key);
       _lfu_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
+      // Now we might need to make space.
+      replace(false);
     } else if (_lfu_cache.contains(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
+      // Now we might need to make space.
+      replace(false);
     } else if (_lru_ghost.contains(key)) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
+      // Add things back
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lru_ghost.remove_from_cache(key);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
-      // Do this only after fixing all invariants
+      // Do this only after fixing all invariants, to evict.
       replace(false);
     } else if (_lfu_ghost.contains(key)) {
       // Case III
       adapt_lfu_ghost_hit();
+      // Add things
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lfu_ghost.remove_from_cache(key);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
+      // Make space
       replace(true);
     } else {
       // Case IV
       int64_t lru_size = _lru_cache.size();
       int64_t total_size = _lfu_cache.size() + lru_size;
-      _lru_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       if (lru_size == _max_size) {
+        Sizer count;
+        int64_t vsize = count(value.get());
         // We are using the entire LRU cache, we need to evict items
         // in order to make space.
-        auto evicted = _lru_cache.evict_entry();
-        if (evicted) {
-          _lru_ghost.add_to_cache(*evicted, nullptr);
-          assert(!_lfu_ghost.contains(*evicted) &&
-                 !_lru_cache.contains(*evicted));
-          _stats.lru_evicts++;
-          _stats.num_evicted++;
+        while (lru_size + vsize > _max_size) {
+          auto evicted = _lru_cache.evict_entry();
+          if (evicted) {
+            _lru_ghost.add_to_cache(*evicted, nullptr);
+            assert(!_lfu_ghost.contains(*evicted) &&
+                   !_lru_cache.contains(*evicted));
+            _stats.lru_evicts++;
+            _stats.num_evicted++;
+          }
+          lru_size = _lru_cache.size();
         }
+        _lru_cache.add_to_cache_no_evict(key, value);
       } else if (total_size >= _max_size) {
         // IV(b)
+        _lru_cache.add_to_cache_no_evict(key, value);
         replace(false);
+      } else {
+        // Had space available
+        _lru_cache.add_to_cache_no_evict(key, value);
       }
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
@@ -92,6 +108,7 @@ public:
 
   // Update a cached element if it exists, do nothing otherwise. Boolean returns
   // whether or not value was updated.
+  // FIXME: THIS DOES NOT CURRENTLY HANDLE SIZERS.
   bool update_cache(const K& key, std::shared_ptr<V> value) {
     std::lock_guard<Lock> l(_lock);
     if (_lru_cache.contains(key)) {
@@ -101,9 +118,14 @@ public:
       // to LFU.
       _lru_cache.remove_from_cache(key);
       _lfu_cache.add_to_cache_no_evict(key, value);
+      replace(false);
+      return true;
+    } else if (_lfu_cache.contains(key)) {
+      _lfu_cache.update_cache(key, value);
+      replace(false);
       return true;
     } else {
-      return _lfu_cache.update_cache(key, value);
+      return false;
     }
   }
 
@@ -191,36 +213,36 @@ protected:
 
   inline void replace(bool in_lfu_ghost) {
     // Avoid unnecessary evictions.
-    if (_lru_cache.size() + _lfu_cache.size() < _max_size) {
-      return;
+    while (_lru_cache.size() + _lfu_cache.size() > _max_size) {
+      if (_lru_cache.size() > 0 &&
+          ((_lru_cache.size() > _p) ||
+           (_lru_cache.size() == _p && in_lfu_ghost))) {
+        std::optional<K> evicted = _lru_cache.evict_entry();
+        if (evicted) {
+          _lru_ghost.add_to_cache(*evicted, nullptr);
+          assert(!_lfu_ghost.contains(*evicted) &&
+                 !_lru_cache.contains(*evicted));
+          ++_stats.lru_evicts;
+        }
+      } else if (_lfu_cache.size() > 0) {
+        std::optional<K> evicted = _lfu_cache.evict_entry();
+        if (evicted) {
+          _lfu_ghost.add_to_cache(*evicted, nullptr);
+          assert(!_lru_ghost.contains(*evicted));
+          ++_stats.lfu_evicts;
+        }
+      } else {
+        // We need to evict something, so...
+        std::optional<K> evicted = _lru_cache.evict_entry();
+        if (evicted) {
+          _lru_ghost.add_to_cache(*evicted, nullptr);
+          assert(!_lfu_ghost.contains(*evicted) &&
+                 !_lru_cache.contains(*evicted));
+          ++_stats.lru_evicts;
+        }
+      }
+      ++_stats.num_evicted;
     }
-    if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
-                                  (_lru_cache.size() == _p && in_lfu_ghost))) {
-      std::optional<K> evicted = _lru_cache.evict_entry();
-      if (evicted) {
-        _lru_ghost.add_to_cache(*evicted, nullptr);
-        assert(!_lfu_ghost.contains(*evicted) &&
-               !_lru_cache.contains(*evicted));
-        ++_stats.lru_evicts;
-      }
-    } else if (_lfu_cache.size() > 0) {
-      std::optional<K> evicted = _lfu_cache.evict_entry();
-      if (evicted) {
-        _lfu_ghost.add_to_cache(*evicted, nullptr);
-        assert(!_lru_ghost.contains(*evicted));
-        ++_stats.lfu_evicts;
-      }
-    } else {
-      // We need to evict something, so...
-      std::optional<K> evicted = _lru_cache.evict_entry();
-      if (evicted) {
-        _lru_ghost.add_to_cache(*evicted, nullptr);
-        assert(!_lfu_ghost.contains(*evicted) &&
-               !_lru_cache.contains(*evicted));
-        ++_stats.lru_evicts;
-      }
-    }
-    ++_stats.num_evicted;
   }
 
 private:
@@ -229,8 +251,8 @@ private:
   int64_t _p;
   int64_t _max_p;
   int64_t _ghost_size;
-  LRUCache<K, V, NopLock> _lru_cache;
-  LRUCache<K, V, NopLock> _lfu_cache;
+  LRUCache<K, V, NopLock, Sizer> _lru_cache;
+  LRUCache<K, V, NopLock, Sizer> _lfu_cache;
   LRUCache<K, V, NopLock> _lru_ghost;
   LRUCache<K, V, NopLock> _lfu_ghost;
   Stats _stats;
