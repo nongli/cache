@@ -27,6 +27,7 @@ public:
   inline int64_t p() const { return _p; }
   inline int64_t max_p() const { return _max_p; }
   inline int64_t filter_size() const { return _filter.max_size(); }
+  inline Lock* get_lock() { return &_lock; }
 
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
