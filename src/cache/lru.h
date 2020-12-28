@@ -151,7 +151,8 @@ public:
         _access_map{}, _sizer{} {}
 
   inline int64_t max_size() const { return _max_size; }
-  int64_t size() const { return _current_size; }
+  inline int64_t size() const { return _current_size; }
+  inline int64_t num_entries() const { return _access_list.size(); }
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return 0; }
   inline int64_t max_p() const { return 0; }

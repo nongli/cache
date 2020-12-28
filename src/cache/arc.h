@@ -25,6 +25,9 @@ public:
 
   inline int64_t max_size() const { return _max_size; }
   inline int64_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
+  inline int64_t num_entries() const {
+    return _lru_cache.num_entries() + _lfu_cache.num_entries();
+  }
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return _p; }
   inline int64_t max_p() const { return _max_p; }
