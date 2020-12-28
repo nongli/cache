@@ -153,6 +153,7 @@ public:
         std::shared_ptr<V> insertable(value);
         _lfu_cache.add_to_cache_no_evict(key, insertable);
         ++_stats.num_hits;
+        _stats.bytes_hit += _sizer(value.get());
         ++_stats.lru_hits;
       } else {
         ++_stats.num_misses;
@@ -166,6 +167,7 @@ public:
     } else {
       value = _lfu_cache.get(key);
       ++_stats.num_hits;
+      _stats.bytes_hit += _sizer(value.get());
       ++_stats.lfu_hits;
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
@@ -290,6 +292,7 @@ private:
   LRUCache<K, V, NopLock> _lru_ghost;
   LRUCache<K, V, NopLock> _lfu_ghost;
   LRUCache<K, V, NopLock> _filter;
+  Sizer _sizer;
   Stats _stats;
 
   int64_t _op_id = 0;

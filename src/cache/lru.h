@@ -143,12 +143,12 @@ private:
 
 // An LRU cache of fixed size.
 template <typename K, typename V, typename Lock = NopLock,
-          typename VSize = ElementCount<V>>
+          typename Sizer = ElementCount<V>>
 class LRUCache : public Cache<K, V> {
 public:
   LRUCache(int64_t size)
       : _max_size{size}, _current_size{0}, _access_list{},
-        _access_map{}, _count{} {}
+        _access_map{}, _sizer{} {}
 
   inline int64_t max_size() const { return _max_size; }
   int64_t size() const { return _current_size; }
@@ -163,6 +163,7 @@ public:
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       ++_stats.num_hits;
+      _stats.bytes_hit += _sizer(elt->second.value.get());
       _access_list.move_to_head(&elt->second);
       return elt->second.value;
     } else {
@@ -223,8 +224,8 @@ public:
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.move_to_head(&elt->second);
-      size_t old = _count(elt.first->second.value.get());
-      size_t nsz = _count(value.get());
+      size_t old = _sizer(elt.first->second.value.get());
+      size_t nsz = _sizer(value.get());
       elt.first->second.value = value;
       _current_size += (nsz - old);
       return true;
@@ -239,7 +240,7 @@ public:
     auto elt = _access_map.find(key);
     if (elt != _access_map.end()) {
       _access_list.remove(&elt->second);
-      _current_size -= _count(elt->second.value.get());
+      _current_size -= _sizer(elt->second.value.get());
       auto val = std::move(elt->second.value);
       _access_map.erase(elt);
       return val;
@@ -272,7 +273,7 @@ private:
   int64_t _current_size;
   LRUList<K, V> _access_list;
   std::unordered_map<K, LRULink<K, V>> _access_map;
-  VSize _count;
+  Sizer _sizer;
   Stats _stats;
 
   // FIXME: We return a key rather than a k,v pair since ARC does not need a
@@ -281,13 +282,14 @@ private:
     if (_current_size == 0) {
       return std::nullopt;
     }
-    ++_stats.num_evicted;
     LRULink<K, V>* remove = _access_list.remove_tail();
     std::string key = remove->key;
-    _current_size -= _count(remove->value.get());
+    _current_size -= _sizer(remove->value.get());
     int64_t removed = _access_map.erase(remove->key);
     // We should have no more than one element with the key.
     assert(removed == 1);
+    ++_stats.num_evicted;
+    _stats.bytes_evicted += _sizer(remove->value.get());
     return key;
   }
 
@@ -297,7 +299,7 @@ private:
                                          std::shared_ptr<V> value) {
     // FIXME Maybe move to C++17 where structured binding makes this more
     // pleasant.
-    int64_t val = _count(value.get());
+    int64_t val = _sizer(value.get());
     auto emplaced = _access_map.emplace(
         std::make_pair(key, std::move(LRULink<K, V>(key, value))));
     if (emplaced.second) {
@@ -305,7 +307,7 @@ private:
       _current_size += val;
     } else {
       _access_list.move_to_head(&emplaced.first->second);
-      _current_size -= _count(emplaced.first->second.value.get());
+      _current_size -= _sizer(emplaced.first->second.value.get());
       emplaced.first->second.value = value;
       _current_size += val;
     }
