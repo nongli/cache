@@ -79,13 +79,16 @@ public:
       _lru_cache.add_to_cache_no_evict(key, value);
       if (lru_only) {
         while (_lru_cache.size() > _max_size) {
+          size_t bytes_evicted = 0;
           // We need to evict something, so...
-          std::optional<K> evicted = _lru_cache.evict_entry();
+          std::optional<K> evicted = _lru_cache.evict_entry(bytes_evicted);
           if (evicted) {
             _lru_ghost.add_to_cache(*evicted, nullptr);
             assert(!_lfu_ghost.contains(*evicted) &&
                    !_lru_cache.contains(*evicted));
             ++_stats.lru_evicts;
+            ++_stats.num_evicted;
+            _stats.bytes_evicted += bytes_evicted;
           }
         }
       } else {
@@ -203,31 +206,35 @@ protected:
   inline void replace(bool in_lfu_ghost) {
     // Avoid unnecessary evictions.
     while (_lru_cache.size() + _lfu_cache.size() > _max_size) {
+      size_t bytes_evicted = 0;
       if (_lru_cache.size() > 0 &&
           ((_lru_cache.size() > _p) ||
            (_lru_cache.size() == _p && in_lfu_ghost))) {
-        std::optional<K> evicted = _lru_cache.evict_entry();
+        std::optional<K> evicted = _lru_cache.evict_entry(bytes_evicted);
         if (evicted) {
           _lru_ghost.add_to_cache(*evicted, nullptr);
           assert(!_lfu_ghost.contains(*evicted) &&
                  !_lru_cache.contains(*evicted));
           ++_stats.lru_evicts;
+          _stats.bytes_evicted += bytes_evicted;
         }
       } else if (_lfu_cache.size() > 0) {
-        std::optional<K> evicted = _lfu_cache.evict_entry();
+        std::optional<K> evicted = _lfu_cache.evict_entry(bytes_evicted);
         if (evicted) {
           _lfu_ghost.add_to_cache(*evicted, nullptr);
           assert(!_lru_ghost.contains(*evicted));
           ++_stats.lfu_evicts;
+          _stats.bytes_evicted += bytes_evicted;
         }
       } else {
         // We need to evict something, so...
-        std::optional<K> evicted = _lru_cache.evict_entry();
+        std::optional<K> evicted = _lru_cache.evict_entry(bytes_evicted);
         if (evicted) {
           _lru_ghost.add_to_cache(*evicted, nullptr);
           assert(!_lfu_ghost.contains(*evicted) &&
                  !_lru_cache.contains(*evicted));
           ++_stats.lru_evicts;
+          _stats.bytes_evicted += bytes_evicted;
         }
       }
       ++_stats.num_evicted;

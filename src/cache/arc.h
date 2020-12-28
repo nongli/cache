@@ -98,11 +98,13 @@ public:
           _lru_ghost.evict_entry();
           replace(false);
         } else {
-          auto key = _lru_cache.evict_entry(); // Make space.
+          size_t value_size = 0;
+          auto key = _lru_cache.evict_entry(value_size); // Make space.
           if (key) {
             _lru_ghost.add_to_cache(*key, nullptr);
             _stats.lru_evicts++;
             _stats.num_evicted++;
+            _stats.bytes_evicted += value_size;
           }
         }
       } else if (lru_size < _max_size && total_size >= _max_size) {
@@ -233,19 +235,22 @@ protected:
   }
 
   inline void replace(bool in_lfu_ghost) {
+    size_t bytes_evicted = 0;
     if (_lru_cache.size() > 0 && ((_lru_cache.size() > _p) ||
                                   (_lru_cache.size() == _p && in_lfu_ghost))) {
-      std::optional<K> evicted = _lru_cache.evict_entry();
+      std::optional<K> evicted = _lru_cache.evict_entry(bytes_evicted);
       if (evicted) {
         _lru_ghost.add_to_cache(*evicted, nullptr);
         ++_stats.lru_evicts;
+        _stats.bytes_evicted += bytes_evicted;
       } else {
         --_stats.num_evicted;
       }
     } else {
       if (_lfu_cache.size() > 0) {
-        std::optional<K> evicted = _lfu_cache.evict_entry();
+        std::optional<K> evicted = _lfu_cache.evict_entry(bytes_evicted);
         assert(evicted);
+        _stats.bytes_evicted += bytes_evicted;
         _lfu_ghost.add_to_cache(*evicted, nullptr);
         ++_stats.lfu_evicts;
       } else {
@@ -253,8 +258,9 @@ protected:
         // call to replace removes at least one element, but what if LFU has
         // nothing to evict and LRU is ignored due to current p?
         if (_lru_cache.size() >= _max_size) {
-          std::optional<K> evicted = _lru_cache.evict_entry();
+          std::optional<K> evicted = _lru_cache.evict_entry(bytes_evicted);
           assert(evicted);
+          _stats.bytes_evicted += bytes_evicted;
           _lru_ghost.add_to_cache(*evicted, nullptr);
           ++_stats.lru_evicts;
         } else {

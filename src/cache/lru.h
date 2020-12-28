@@ -194,14 +194,21 @@ public:
   }
 
   // Evict an entry and return the evicted entry's key.
+  inline std::optional<K> evict_entry(size_t& evicted_size) {
+    std::lock_guard<Lock> l(_lock);
+    return evict_entry_impl(evicted_size);
+  }
+
+  // Evict an entry and return the evicted entry's key.
   inline std::optional<K> evict_entry() {
     std::lock_guard<Lock> l(_lock);
-    return evict_entry_impl();
+    size_t r;
+    return evict_entry_impl(r);
   }
 
   // Insert element into the cache. Might evict a cache element if necessary.
   // If the same key is used then we replace the value.
-  // Returns size of evicted entries.
+  // Returns size of EVicted entries.
   int64_t add_to_cache(const K& key, std::shared_ptr<V> value) {
     // FIXME: Should input be shared_ptr? Not so sure. Revisit.
     // FIXME: Need to notify on eviction, this is something that the ghost
@@ -211,7 +218,8 @@ public:
     assert(_current_size == _access_map.size());
     int64_t before = _current_size;
     while (_current_size > _max_size) {
-      evict_entry_impl();
+      size_t e;
+      evict_entry_impl(e);
     }
     // FIXME: Is this ever useful?
     return before - _current_size;
@@ -278,18 +286,19 @@ private:
 
   // FIXME: We return a key rather than a k,v pair since ARC does not need a
   // value, but is this a good design.
-  inline std::optional<K> evict_entry_impl() {
+  inline std::optional<K> evict_entry_impl(std::size_t& evicted_size) {
     if (_current_size == 0) {
       return std::nullopt;
     }
     LRULink<K, V>* remove = _access_list.remove_tail();
     std::string key = remove->key;
-    _current_size -= _sizer(remove->value.get());
+    evicted_size = _sizer(remove->value.get());
+    _current_size -= evicted_size;
     int64_t removed = _access_map.erase(remove->key);
     // We should have no more than one element with the key.
     assert(removed == 1);
     ++_stats.num_evicted;
-    _stats.bytes_evicted += _sizer(remove->value.get());
+    _stats.bytes_evicted += evicted_size;
     return key;
   }
 
