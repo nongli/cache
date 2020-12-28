@@ -14,10 +14,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # General compiler flags
 set(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare -Werror=switch -Werror=return-type")
-
+set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -march=haswell")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror -fno-omit-frame-pointer -fsanitize=address,undefined")
-set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address,undefined")
+
+# Configure build/release
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
+  set(EXECUTABLE_OUTPUT_PREFIX "${CMAKE_SOURCE_DIR}/build/release")
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror -fno-omit-frame-pointer -fsanitize=address,undefined")
+  set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address,undefined")
+  set(EXECUTABLE_OUTPUT_PREFIX "${CMAKE_SOURCE_DIR}/build/debug")
+endif()
+
 
 #
 # Out of source builds
@@ -50,7 +59,7 @@ include_directories(thirdparty/gflags/include)
 #
 # Subdirectories
 #
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/exe)
+set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PREFIX}/exe)
 add_subdirectory(src)
 
 set(LIBS ${LIBS} Util)
@@ -58,11 +67,11 @@ set(LIBS ${LIBS} Util)
 #
 # Tests
 #
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/tests)
+set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PREFIX}/tests)
 add_subdirectory(test)
 
 #
 # Examples
 #
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build/examples)
+set(EXECUTABLE_OUTPUT_PATH ${EXECUTABLE_OUTPUT_PREFIX}/examples)
 add_executable(example examples/example.cc)

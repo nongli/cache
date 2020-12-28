@@ -13,9 +13,9 @@ Trace::~Trace() {}
 FixedTrace::FixedTrace(const vector<Request>& trace) : _requests(trace) {}
 
 Zipfian::Zipfian(int64_t n, double alpha) {
-  double c;
+  double c = 0;
   for (int64_t i = 1; i <= n; ++i) {
-    c = c + (1.0 / pow((double)i, alpha));
+    c += (1.0 / pow((double)i, alpha));
   }
   c = 1.0 / c;
 

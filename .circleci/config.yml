@@ -17,9 +17,9 @@ jobs:
       - run:
           name: Setup cmake and build artifacts
           command: |
-            mkdir -p build 
-            cd build
-            cmake -H.. -B.
+            mkdir -p build/debug
+            cd build/debug
+            cmake -H../.. -B.
             make
       - persist_to_workspace:
           root: .
@@ -32,7 +32,7 @@ jobs:
       - run:
           name: Execute Tests
           command: |
-            cd build
+            cd build/debug
             make test
       - store_test_results:
           path: build

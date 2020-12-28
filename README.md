@@ -10,8 +10,18 @@ dev/download-thirdparty.sh
 
 ## Build
 
+### Dev build
+
 ```shell
-mkdir -p build && cd build && cmake -H.. -B.
+mkdir -p build/debug && cd build/debug && cmake -H../.. -B.
+make -j8
+./exe/build-check
+```
+
+### Release build
+
+```shell
+mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=RELEASE -H../.. -B.
 make -j8
 ./exe/build-check
 ```
@@ -19,7 +29,7 @@ make -j8
 ### Test
 
 ```shell
-cd build
+cd build/debug
 make test
 ```
 
