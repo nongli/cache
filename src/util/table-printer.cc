@@ -7,7 +7,7 @@ using namespace cache;
 using namespace std;
 
 // Number of spaces to pad adjacent columns.
-const int COLUMN_PAD = 3;
+const int COLUMN_PAD = 2;
 
 TablePrinter::TablePrinter() : max_output_width_(-1) {
 }

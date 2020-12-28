@@ -4,46 +4,61 @@
 #include "util/trace-gen.h"
 
 #include "gflags/gflags.h"
+
+#include <chrono>
 #include <map>
 
 /**
-  exe/bench-cache --iters 5 -minimal
-  trace              cache            hits   misses   evicts      p   max_p   hit %   LRU %   LFU %   miss %   LRU Ghost %    LFU Ghost %
-  ---------------------------------------------------------------------------------------------------------------------------------------
-  seq-cycle-10%      arc-25          98000     2000        0      0       0      98       2      97        2             0              0
-  seq-cycle-10%      lru-25          98000     2000        0      -       -      98       -       -        2             -              -
-  seq-cycle-10%      farc-25-400     98000     2000        0      0       0      98       2      97        2             0              0
+$ exe/bench-cache
 
-  seq-cycle-50%      arc-25           2501    97499    92499   3750    5000       2     100       0       97             0             73
-  seq-cycle-50%      lru-25              0   100000    95000      -       -       0       -       -      100             -              -
-  seq-cycle-50%      farc-25-400      2500    97500    92500      0    5000       2     100       0       97             0             89
+trace            cache            hits  misses  evicts     p  max_p  hit %  LRU %  LFU %  miss %  LRU Ghost %  LFU Ghost %  filters   micros/val
+------------------------------------------------------------------------------------------------------------------------------------------------
+med-seq-cycle    arc-25         119996   80004   75004     0      0     59      4     95      40            0            0        -     3.773340
+med-seq-cycle    arc-25-filter  115000   85000       0     0      0     57      4     95      42            0            0    80000     2.777510
+med-seq-cycle    lru-25         100000  100000   95000     -      -     50      -      -      50            -            -        -     1.992620
+med-seq-cycle    farc-25-400    105000   95000   90000     0   5000     52      4     95      47            0           78        -     4.552605
 
-  seq-unique         arc-25              0   100000    95000      0    5000       0       -       -      100             0              0
-  seq-unique         lru-25              0   100000    95000      -       -       0       -       -      100             -              -
-  seq-unique         farc-25-400      2500    97500    92500      0    5000       2     100       0       97             0             79
+seq-cycle-10%    arc-25          98000    2000       0     0      0     98      2     97       2            0            0        -     1.100750
+seq-cycle-10%    arc-25-filter   96000    4000       0     0      0     96      2     97       4            0            0     2000     1.161190
+seq-cycle-10%    lru-25          98000    2000       0     -      -     98      -      -       2            -            -        -     0.523590
+seq-cycle-10%    farc-25-400     98000    2000       0     0   5000     98      2     97       2            0            0        -     1.050600
 
-  small-big-cycle    arc-25         200800    99200    94200      0    5000      66       0      99       33             0              0
-  small-big-cycle    lru-25         200000   100000    95000      -       -      66       -       -       33             -              -
-  small-big-cycle    farc-25-400    202600    97400    92400      0    5000      67       1      98       32             0             79
+seq-cycle-50%    arc-25           2501   97499   92499  3750   5000      2    100      0      97            0           73        -     8.100470
+seq-cycle-50%    arc-25-filter    2501   97499   82499     0   5000      2    100      0      97            0           64    10000     7.730420
+seq-cycle-50%    lru-25              0  100000   95000     -      -      0      -      -     100            -            -        -     3.455090
+seq-cycle-50%    farc-25-400      2500   97500   92500     0   5000      2    100      0      97            0           89        -     8.080820
 
-  zipf-.7            arc-25          66352    33648    28648   1061    5000      66       3      96       33             0              3
-  zipf-.7            lru-25          51667    48333    43333      -       -      51       -       -       48             -              -
-  zipf-.7            farc-25-400     52870    47130    42130      0    5000      52       4      95       47             0             80
+seq-unique       arc-25              0  100000   95000     0   5000      0      -      -     100            0            0        -     7.825240
+seq-unique       arc-25-filter       0  100000       0     0   5000      0      -      -     100            0            0   100000     4.866460
+seq-unique       lru-25              0  100000   95000     -      -      0      -      -     100            -            -        -     3.495960
+seq-unique       farc-25-400      2500   97500   92500     0   5000      2    100      0      97            0           79        -     8.449350
 
-  zipf-1             arc-25          80558    19442    14442      0    5000      80       3      96       19             0             72
-  zipf-1             lru-25          79849    20151    15151      -       -      79       -       -       20             -              -
-  zipf-1             farc-25-400     80558    19442    14442      0    5000      80       3      96       19             0             72
+tiny-seq-cycle   arc-25         100800   99200   94200     0   5000     50      0     99      49            0            0        -     4.371300
+tiny-seq-cycle   arc-25-filter  100600   99400       0     0   5000     50      0     99      49            0            0    99200     3.045655
+tiny-seq-cycle   lru-25         100000  100000   95000     -      -     50      -      -      50            -            -        -     1.991965
+tiny-seq-cycle   farc-25-400    102600   97400   92400     0   5000     51      2     97      48            0           79        -     4.732015
 
-  zipf-seq           arc-25         128581   171419   166419     31    5000      42       2      97       57             0             28
-  zipf-seq           lru-25         109112   190888   185888      -       -      36       -       -       63             -              -
-  zipf-seq           farc-25-400    110764   189236   184236      0    5000      36       2      97       63             0             89
+zipf-.7          arc-25          66352   33648   28648  1061   5000     66      3     96      33            0            3        -     3.574240
+zipf-.7          arc-25-filter   62910   37090   22702   932   5000     62      4     95      37            0            2     9388     3.317760
+zipf-.7          lru-25          51667   48333   43333     -      -     51      -      -      48            -            -        -     1.960610
+zipf-.7          farc-25-400     52870   47130   42130     0   5000     52      4     95      47            0           80        -     4.703560
+
+zipf-1           arc-25          80558   19442   14442     0   5000     80      3     96      19            0           72        -     2.374250
+zipf-1           arc-25-filter   79472   20528   10200     0   5000     79      3     96      20            0           48     5328     2.250710
+zipf-1           lru-25          79849   20151   15151     -      -     79      -      -      20            -            -        -     1.124310
+zipf-1           farc-25-400     80558   19442   14442     0   5000     80      3     96      19            0           72        -     2.656020
+
+zipf-seq         arc-25         128581  171419  166419    31   5000     42      2     97      57            0           28        -     5.309143
+zipf-seq         arc-25-filter  117022  182978  112119     0   5000     39      2     97      60            0           58    65859     5.003490
+zipf-seq         lru-25         109112  190888  185888     -      -     36      -      -      63            -            -        -     2.552693
+zipf-seq         farc-25-400    110764  189236  184236     0   5000     36      2     97      63            0           89        -     6.168880
 
 **/
 
 DEFINE_bool(include_lru, true, "Include lru cache in tests.");
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
-DEFINE_int64(iters, 2, "Number of times to repeated the trace.");
+DEFINE_int64(iters, 5, "Number of times to repeated the trace.");
 DEFINE_string(trace, "", "Name of trace to run.");
 
 using namespace std;
@@ -61,18 +76,24 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
           Cache* cache, CacheType type, int iters) {
   cache->clear();
 
+  int64_t total_vals = 0;
+  double total_micros = 0;
   for (int i = 0; i < iters; ++i) {
     trace->Reset();
+    chrono::steady_clock::time_point start = chrono::steady_clock::now();
     while (true) {
       const Request* r = trace->next();
       if (r == nullptr) {
         break;
       }
       shared_ptr<string> val = cache->get(r->key);
+      ++total_vals;
       if (!val) {
         cache->add_to_cache(r->key, make_shared<string>(r->value));
       }
     }
+    chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    total_micros += chrono::duration_cast<chrono::microseconds>(end - start).count();
   }
 
   Stats stats = cache->stats();
@@ -141,6 +162,7 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   } else {
     row.push_back("-");
   }
+  row.push_back(to_string(total_micros / total_vals));
 
   results->AddRow(row);
 }
@@ -189,6 +211,7 @@ int main(int argc, char** argv) {
   results.AddColumn("LRU Ghost %", false);
   results.AddColumn("LFU Ghost %", false);
   results.AddColumn("filters", false);
+  results.AddColumn("micros/val", false);
 
   const int keys = FLAGS_unique_keys;
 
