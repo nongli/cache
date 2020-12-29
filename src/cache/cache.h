@@ -94,4 +94,21 @@ public:
   }
 };
 
+// This sizer uses the value (which it assumes is a int64_t as the reported
+// size. This makes it easier to handle traces with sizes without needing
+// values.
+class TraceSizer {
+public:
+  TraceSizer() {}
+  TraceSizer(const TraceSizer&) = default;
+  TraceSizer(TraceSizer&&) = default;
+  inline int64_t operator()(const int* v) const {
+    if (v) {
+      return *v;
+    } else {
+      return 0;
+    }
+  }
+};
+
 } // namespace cache
