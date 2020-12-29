@@ -167,14 +167,18 @@ public:
     return value;
   }
 
-  void clear() {
+  void reset() {
     std::lock_guard<Lock> l(_lock);
-    _stats.clear();
     _lru_cache.clear();
     _lfu_cache.clear();
     _lru_ghost.clear();
     _lfu_ghost.clear();
     _p = 0;
+  }
+
+  void clear() {
+    _stats.clear();
+    reset();
   }
 
   FlexARC() = delete;

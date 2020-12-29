@@ -196,11 +196,10 @@ public:
     return value;
   }
 
-  void clear() {
+  void reset() {
     std::lock_guard<Lock> l(_lock);
-    debug_trace("clear");
+    debug_trace("reset");
 
-    _stats.clear();
     _lru_cache.clear();
     _lfu_cache.clear();
     _lru_ghost.clear();
@@ -208,6 +207,11 @@ public:
     _filter.clear();
     _p = 0;
     _op_id = 0;
+  }
+
+  void clear() {
+    _stats.clear();
+    reset();
   }
 
   AdaptiveCache() = delete;

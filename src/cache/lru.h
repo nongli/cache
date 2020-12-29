@@ -263,12 +263,16 @@ public:
   // Decrease the maximum cache size.
   void decrease_size(int64_t delta) { _max_size -= delta; }
 
-  void clear() {
+  void reset() {
     std::lock_guard<Lock> l(_lock);
     _current_size = 0;
-    _stats.clear();
     _access_map.clear();
     _access_list.clear();
+  }
+
+  void clear() {
+    _stats.clear();
+    reset();
   }
 
   // FIXME: Do we want a default size?
