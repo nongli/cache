@@ -114,6 +114,23 @@ TEST(ArcCache, SmallCycle) {
   ASSERT_EQ(20, cache.stats().num_misses);
 }
 
+TEST(ArcCache, BadCycle) {
+  // Trace goes 0..10, twice on a cache of 5.
+  AdaptiveCache<string, string> cache(5);
+  FixedTrace trace(TraceGen::CycleTrace(20, 10, "value"));
+
+  TestTrace(&cache, &trace);
+  ASSERT_EQ(1, cache.stats().num_hits);
+  ASSERT_EQ(19, cache.stats().num_misses);
+  ASSERT_EQ(14, cache.stats().num_evicted);
+
+  trace.Reset();
+  TestTrace(&cache, &trace);
+  ASSERT_EQ(3, cache.stats().num_hits);
+  ASSERT_EQ(37, cache.stats().num_misses);
+  ASSERT_EQ(32, cache.stats().num_evicted);
+}
+
 TEST(ArcCache, Gaussian) {
   // This will fail with some probability. Retry if this is a problem?
   AdaptiveCache<string, string> cache(100);

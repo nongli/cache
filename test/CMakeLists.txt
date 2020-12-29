@@ -5,6 +5,7 @@ FUNCTION(ADD_SIMPLE_TEST TEST SRC)
 ENDFUNCTION()
 
 ADD_SIMPLE_TEST(arc-test arc-test.cc)
+ADD_SIMPLE_TEST(belady-test belady-test.cc)
 ADD_SIMPLE_TEST(flex-arc-test flex-arc-test.cc)
 ADD_SIMPLE_TEST(cache-compare-test cache-compare-test.cc)
 ADD_SIMPLE_TEST(example-test example-test.cc)
