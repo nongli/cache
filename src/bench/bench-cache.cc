@@ -110,7 +110,8 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
       }
     }
     chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    total_micros += chrono::duration_cast<chrono::microseconds>(end - start).count();
+    total_micros +=
+        chrono::duration_cast<chrono::microseconds>(end - start).count();
   }
 
   Stats stats = cache->stats();
@@ -119,7 +120,8 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   switch (type) {
   case CacheType::Arc:
     if (cache->filter_size() > 0) {
-      row.push_back("arc-" + to_string(cache->max_size() * 100 / n) + "-filter");
+      row.push_back("arc-" + to_string(cache->max_size() * 100 / n) +
+                    "-filter");
     } else {
       row.push_back("arc-" + to_string(cache->max_size() * 100 / n));
     }
@@ -208,7 +210,8 @@ void Test(TablePrinter* results, int n, int iters) {
     }
     if (FLAGS_include_belady) {
       BeladyCache<string, string> cache(n * .25, trace.second);
-      Test(results, n, trace.first, trace.second, &cache, CacheType::Belady, iters);
+      Test(results, n, trace.first, trace.second, &cache, CacheType::Belady,
+           iters);
     }
 
     results->AddEmptyRow();
@@ -223,9 +226,8 @@ void AddTrace(string_view name, Trace* trace) {
   traces[string(name)] = trace;
 }
 
-template<typename C>
-void del(vector<C*> v) {
-  for (C* c: v) {
+template <typename C> void del(vector<C*> v) {
+  for (C* c : v) {
     delete c;
   }
 }
@@ -258,13 +260,13 @@ int main(int argc, char** argv) {
   //
   AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, "v")));
   AddTrace("seq-cycle-10%",
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v")));
+           new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v")));
   AddTrace("seq-cycle-50%",
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v")));
-  AddTrace("zipf-1",
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 1, "v")));
-  AddTrace("zipf-.7",
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v")));
+           new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v")));
+  AddTrace("zipf-1", new FixedTrace(
+                         TraceGen::ZipfianDistribution(0, keys, keys, 1, "v")));
+  AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
+                          0, keys, keys, 0.7, "v")));
 
   // zipf, all keys, zipf
   FixedTrace* zip_seq =
@@ -274,14 +276,14 @@ int main(int argc, char** argv) {
   AddTrace("zipf-seq", zip_seq);
 
   // tiny + all keys
-  FixedTrace* tiny_seq_cycle = new FixedTrace(
-      TraceGen::CycleTrace(keys, keys * .01, "v"));
+  FixedTrace* tiny_seq_cycle =
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
   tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
   AddTrace("tiny-seq-cycle", tiny_seq_cycle);
 
   // medium + all keys
-  FixedTrace* med_seq_cycle = new FixedTrace(
-      TraceGen::CycleTrace(keys, keys * .25, "v"));
+  FixedTrace* med_seq_cycle =
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, "v"));
   med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
   AddTrace("med-seq-cycle", med_seq_cycle);
 
@@ -309,7 +311,8 @@ int main(int argc, char** argv) {
 
   if (FLAGS_include_tiered) {
     TieredArc* tiered = new TieredArc();
-    tiered->add_cache(10, make_shared<AdaptiveCache<string, string>>(keys * .25));
+    tiered->add_cache(10,
+                      make_shared<AdaptiveCache<string, string>>(keys * .25));
     tiered_caches.push_back(tiered);
   }
 
