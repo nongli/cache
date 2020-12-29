@@ -72,6 +72,7 @@ class TraceReader : public Trace {
     if (std::getline(_file, line)) {
       std::stringstream l(line);
       l >> _r.key >> _r.size;
+      return &_r;
     } else {
       return NULL;
     }
