@@ -102,7 +102,7 @@ public:
   TraceSizer() {}
   TraceSizer(const TraceSizer&) = default;
   TraceSizer(TraceSizer&&) = default;
-  inline int64_t operator()(const int* v) const {
+  inline int64_t operator()(const int64_t* v) const {
     if (v) {
       return *v;
     } else {
