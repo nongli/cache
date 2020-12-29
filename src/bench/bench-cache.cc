@@ -1,5 +1,6 @@
 #include "cache/arc.h"
 #include "cache/flex-arc.h"
+#include "cache/tiered-cache.h"
 #include "util/belady.h"
 #include "util/table-printer.h"
 #include "util/trace-gen.h"
@@ -66,6 +67,8 @@ zipf-seq         belady-25      156110  143890  118890     0      0     52      
 
 DEFINE_bool(include_lru, true, "Include lru cache in tests.");
 DEFINE_bool(include_belady, false, "Include belady cache in tests.");
+DEFINE_bool(include_tiered, false, "Include tiered cache in tests.");
+
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
 DEFINE_int64(iters, 5, "Number of times to repeated the trace.");
@@ -74,12 +77,15 @@ DEFINE_string(trace, "", "Name of trace to run.");
 using namespace std;
 using namespace cache;
 
+typedef TieredCache<string, string, AdaptiveCache<string, string>> TieredArc;
+
 map<string, Trace*> traces;
 vector<AdaptiveCache<string, string>*> arcs;
 vector<LRUCache<string, string>*> lrus;
 vector<FlexARC<string, string>*> farcs;
+vector<TieredArc*> tiered_caches;
 
-enum class CacheType { Lru, Arc, Farc, Belady };
+enum class CacheType { Lru, Arc, Farc, Belady, Tiered };
 
 template <class Cache>
 void Test(TablePrinter* results, int n, const string& name, Trace* trace,
@@ -129,6 +135,9 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
     break;
   case CacheType::Belady:
     row.push_back("belady-" + to_string(cache->max_size() * 100 / n));
+    break;
+  case CacheType::Tiered:
+    row.push_back("tiered-" + to_string(cache->max_size() * 100 / n));
     break;
   default:
     assert(false);
@@ -191,6 +200,10 @@ void Test(TablePrinter* results, int n, int iters) {
     }
     for (FlexARC<string, string>* cache : farcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Farc,
+           iters);
+    }
+    for (TieredArc* cache : tiered_caches) {
+      Test(results, n, trace.first, trace.second, cache, CacheType::Tiered,
            iters);
     }
     if (FLAGS_include_belady) {
@@ -294,6 +307,12 @@ int main(int argc, char** argv) {
     }
   }
 
+  if (FLAGS_include_tiered) {
+    TieredArc* tiered = new TieredArc();
+    tiered->add_cache(10, make_shared<AdaptiveCache<string, string>>(keys * .25));
+    tiered_caches.push_back(tiered);
+  }
+
   Test(&results, keys, FLAGS_iters);
   printf("%s\n", results.ToString().c_str());
 
@@ -303,5 +322,6 @@ int main(int argc, char** argv) {
   del(arcs);
   del(lrus);
   del(farcs);
+  del(tiered_caches);
   return 0;
 }

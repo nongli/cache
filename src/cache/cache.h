@@ -21,6 +21,21 @@ struct Stats {
   int64_t arc_filter = 0;
 
   void clear() { memset(this, 0, sizeof(Stats)); }
+
+  void merge(const Stats& s) {
+    num_hits += s.num_hits;
+    num_misses += s.num_misses;
+    num_evicted += s.num_evicted;
+    bytes_hit += s.bytes_hit;
+    bytes_evicted += s.bytes_evicted;
+    lfu_hits += s.lfu_hits;
+    lru_hits += s.lru_hits;
+    lfu_evicts += s.lfu_evicts;
+    lru_evicts += s.lru_evicts;
+    lfu_ghost_hits += s.lfu_ghost_hits;
+    lru_ghost_hits += s.lru_ghost_hits;
+    arc_filter += s.arc_filter;
+  }
 };
 
 // A nop lock for when fine-grained locking in LRU makes no sense since coarse
