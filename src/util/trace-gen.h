@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -9,8 +11,11 @@ namespace cache {
 struct Request {
   std::string key;
   std::string value;
+  int64_t size;
 
-  Request(std::string_view k, std::string_view v) : key(k), value(v) {}
+  Request() = default;
+  Request(std::string_view k, std::string_view v) : key(k), value(v), size(0) {}
+  Request(std::string_view k, int64_t s) : key(k), value(""), size(s) {}
 };
 
 class Trace {
@@ -56,6 +61,26 @@ public:
 private:
   std::vector<Trace*> _traces;
   std::vector<Trace*> _active_traces;
+};
+
+// Trace
+class TraceReader : public Trace {
+  TraceReader(std::string& fname) : _file(fname), _file_name(fname), _r{} {}
+  virtual void Reset() { _file.seekg(0); }
+  virtual const Request* next() {
+    std::string line;
+    if (std::getline(_file, line)) {
+      std::stringstream l(line);
+      l >> _r.key >> _r.size;
+    } else {
+      return NULL;
+    }
+  }
+
+private:
+  std::ifstream _file;
+  std::string _file_name;
+  Request _r;
 };
 
 class Zipfian {
