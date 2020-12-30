@@ -180,7 +180,7 @@ void Test(TablePrinter* results, int64_t n, const string& name, Trace* trace,
       }
       shared_ptr<int64_t> val = cache->get(r->key);
       ++total_vals;
-      if (total_vals % 1000000 == 0) {
+      if (total_vals % 2500000 == 0) {
         cerr << "   ...tested " << total_vals << " values" << endl;
       }
       if (!val) {
