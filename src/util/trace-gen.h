@@ -63,6 +63,7 @@ private:
 
 // Trace
 class TraceReader : public Trace {
+public:
   TraceReader(std::string& fname) : _file(fname), _file_name(fname), _r{} {}
   virtual void Reset() { _file.seekg(0); }
   virtual const Request* next() {
@@ -100,20 +101,19 @@ public:
 
   // Generate a trace that cycles from 0 to k up to N values.
   // e.g. k = N generates all unique keys
-  static std::vector<Request> CycleTrace(int64_t n, int64_t k,
-                                         int64_t v);
+  static std::vector<Request> CycleTrace(int64_t n, int64_t k, int64_t v);
 
   // Generate a trace that follows a normal distribution with mean and stddev
-  static std::vector<Request>
-  NormalDistribution(int64_t n, double mean, double stdev, int64_t v);
+  static std::vector<Request> NormalDistribution(int64_t n, double mean,
+                                                 double stdev, int64_t v);
 
   // Generate a trace that follows a poison distribution with mean
   static std::vector<Request> PoissonDistribution(int64_t n, double mean,
                                                   int64_t v);
 
   // Generate a trace that follows a zipfian distribution with values [1, k]
-  static std::vector<Request>
-  ZipfianDistribution(int64_t n, int64_t k, double alpha, int64_t v);
+  static std::vector<Request> ZipfianDistribution(int64_t n, int64_t k,
+                                                  double alpha, int64_t v);
 
   static std::vector<Request> ZipfianDistribution(uint32_t seed, int64_t n,
                                                   int64_t k, double alpha,

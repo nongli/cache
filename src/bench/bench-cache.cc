@@ -255,38 +255,43 @@ int main(int argc, char** argv) {
 
   const int keys = FLAGS_unique_keys;
 
-  //
-  // Configure traces
-  //
-  AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, 42)));
-  AddTrace("seq-cycle-10%",
-           new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, 42)));
-  AddTrace("seq-cycle-50%",
-           new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, 42)));
-  AddTrace("zipf-1", new FixedTrace(
-                         TraceGen::ZipfianDistribution(0, keys, keys, 1, 42)));
-  AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
-                          0, keys, keys, 0.7, 42)));
+  if (FLAGS_trace.empty()) {
+    //
+    // Configure traces
+    //
+    AddTrace("seq-unique",
+             new FixedTrace(TraceGen::CycleTrace(keys, keys, 42)));
+    AddTrace("seq-cycle-10%",
+             new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, 42)));
+    AddTrace("seq-cycle-50%",
+             new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, 42)));
+    AddTrace("zipf-1", new FixedTrace(TraceGen::ZipfianDistribution(
+                           0, keys, keys, 1, 42)));
+    AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
+                            0, keys, keys, 0.7, 42)));
 
-  // zipf, all keys, zipf
-  FixedTrace* zip_seq =
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
-  zip_seq->Add(TraceGen::CycleTrace(keys, keys, 42));
-  zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
-  AddTrace("zipf-seq", zip_seq);
+    // zipf, all keys, zipf
+    FixedTrace* zip_seq =
+        new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
+    zip_seq->Add(TraceGen::CycleTrace(keys, keys, 42));
+    zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
+    AddTrace("zipf-seq", zip_seq);
 
-  // tiny + all keys
-  FixedTrace* tiny_seq_cycle =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, 42));
-  tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
-  AddTrace("tiny-seq-cycle", tiny_seq_cycle);
+    // tiny + all keys
+    FixedTrace* tiny_seq_cycle =
+        new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, 42));
+    tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
+    AddTrace("tiny-seq-cycle", tiny_seq_cycle);
 
-  // medium + all keys
-  FixedTrace* med_seq_cycle =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, 42));
-  med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
-  AddTrace("med-seq-cycle", med_seq_cycle);
-
+    // medium + all keys
+    FixedTrace* med_seq_cycle =
+        new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, 42));
+    med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
+    AddTrace("med-seq-cycle", med_seq_cycle);
+  } else {
+    TraceReader* reader = new TraceReader(FLAGS_trace);
+    AddTrace(FLAGS_trace, reader);
+  }
   //
   // Configure caches
   //
@@ -304,7 +309,8 @@ int main(int argc, char** argv) {
         lrus.push_back(new LRUCache<string, int64_t>(keys * sz));
       }
       for (double gs : ghost_sizes) {
-        farcs.push_back(new FlexARC<string, int64_t>(keys * sz, keys * sz * gs));
+        farcs.push_back(
+            new FlexARC<string, int64_t>(keys * sz, keys * sz * gs));
       }
     }
   }
