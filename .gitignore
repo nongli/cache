@@ -20,6 +20,7 @@ CTestTestfile.cmake
 !CMakeLists.txt
 
 build/
+traces
 thirdparty/
 # CCache
 compile_commands.json
