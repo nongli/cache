@@ -71,18 +71,21 @@ DEFINE_bool(include_tiered, false, "Include tiered cache in tests.");
 
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
+DEFINE_int64(base_size, 0, "Base size for cache. Defaults to unique_keys");
 DEFINE_int64(iters, 5, "Number of times to repeated the trace.");
 DEFINE_string(trace, "", "Name of trace to run.");
 
 using namespace std;
 using namespace cache;
 
-typedef TieredCache<string, string, AdaptiveCache<string, string>> TieredArc;
+typedef TieredCache<string, int64_t,
+                    AdaptiveCache<string, int64_t, NopLock, TraceSizer>>
+    TieredArc;
 
 map<string, Trace*> traces;
-vector<AdaptiveCache<string, string>*> arcs;
-vector<LRUCache<string, string>*> lrus;
-vector<FlexARC<string, string>*> farcs;
+vector<AdaptiveCache<string, int64_t, NopLock, TraceSizer>*> arcs;
+vector<LRUCache<string, int64_t, NopLock, TraceSizer>*> lrus;
+vector<FlexARC<string, int64_t, NopLock, TraceSizer>*> farcs;
 vector<TieredArc*> tiered_caches;
 
 enum class CacheType { Lru, Arc, Farc, Belady, Tiered };
@@ -103,10 +106,10 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
       if (r == nullptr) {
         break;
       }
-      shared_ptr<string> val = cache->get(r->key);
+      shared_ptr<int64_t> val = cache->get(r->key);
       ++total_vals;
       if (!val) {
-        cache->add_to_cache(r->key, make_shared<string>(r->value));
+        cache->add_to_cache(r->key, make_shared<int64_t>(r->value));
       }
     }
     chrono::steady_clock::time_point end = chrono::steady_clock::now();
@@ -132,8 +135,10 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   case CacheType::Farc:
     row.push_back(
         "farc-" + to_string(cache->max_size() * 100 / n) + "-" +
-        to_string(dynamic_cast<FlexARC<string, string>*>(cache)->ghost_size() *
-                  100 / cache->max_size()));
+        to_string(
+            dynamic_cast<FlexARC<string, int64_t, NopLock, TraceSizer>*>(cache)
+                ->ghost_size() *
+            100 / cache->max_size()));
     break;
   case CacheType::Belady:
     row.push_back("belady-" + to_string(cache->max_size() * 100 / n));
@@ -194,13 +199,13 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
 
 void Test(TablePrinter* results, int n, int iters) {
   for (auto trace : traces) {
-    for (AdaptiveCache<string, string>* cache : arcs) {
+    for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
     }
-    for (LRUCache<string, string>* cache : lrus) {
+    for (LRUCache<string, int64_t, NopLock, TraceSizer>* cache : lrus) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
-    for (FlexARC<string, string>* cache : farcs) {
+    for (FlexARC<string, int64_t, NopLock, TraceSizer>* cache : farcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Farc,
            iters);
     }
@@ -209,7 +214,7 @@ void Test(TablePrinter* results, int n, int iters) {
            iters);
     }
     if (FLAGS_include_belady) {
-      BeladyCache<string, string> cache(n * .25, trace.second);
+      BeladyCache<string, int64_t> cache(n * .25, trace.second);
       Test(results, n, trace.first, trace.second, &cache, CacheType::Belady,
            iters);
     }
@@ -254,69 +259,85 @@ int main(int argc, char** argv) {
   results.AddColumn("micros/val", false);
 
   const int keys = FLAGS_unique_keys;
+  int64_t base_size = FLAGS_base_size;
+  if (base_size == 0) {
+    base_size = keys;
+  }
 
-  //
-  // Configure traces
-  //
-  AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, "v")));
-  AddTrace("seq-cycle-10%",
-           new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v")));
-  AddTrace("seq-cycle-50%",
-           new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v")));
-  AddTrace("zipf-1", new FixedTrace(
-                         TraceGen::ZipfianDistribution(0, keys, keys, 1, "v")));
-  AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
-                          0, keys, keys, 0.7, "v")));
+  if (FLAGS_trace.empty()) {
+    //
+    // Configure traces
+    //
+    AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, 1)));
+    AddTrace("seq-cycle-10%",
+             new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, 1)));
+    AddTrace("seq-cycle-50%",
+             new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, 1)));
+    AddTrace("zipf-1", new FixedTrace(
+                           TraceGen::ZipfianDistribution(0, keys, keys, 1, 1)));
+    AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
+                            0, keys, keys, 0.7, 1)));
 
-  // zipf, all keys, zipf
-  FixedTrace* zip_seq =
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
-  zip_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
-  AddTrace("zipf-seq", zip_seq);
+    // zipf, all keys, zipf
+    FixedTrace* zip_seq =
+        new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 1));
+    zip_seq->Add(TraceGen::CycleTrace(keys, keys, 1));
+    zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 1));
+    AddTrace("zipf-seq", zip_seq);
 
-  // tiny + all keys
-  FixedTrace* tiny_seq_cycle =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
-  tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  AddTrace("tiny-seq-cycle", tiny_seq_cycle);
+    // tiny + all keys
+    FixedTrace* tiny_seq_cycle =
+        new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, 1));
+    tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 1));
+    AddTrace("tiny-seq-cycle", tiny_seq_cycle);
 
-  // medium + all keys
-  FixedTrace* med_seq_cycle =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, "v"));
-  med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  AddTrace("med-seq-cycle", med_seq_cycle);
-
+    // medium + all keys
+    FixedTrace* med_seq_cycle =
+        new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, 1));
+    med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 1));
+    AddTrace("med-seq-cycle", med_seq_cycle);
+  } else {
+    TraceReader* reader = new TraceReader(FLAGS_trace);
+    AddTrace(FLAGS_trace, reader);
+  }
   //
   // Configure caches
   //
   if (FLAGS_minimal) {
-    arcs.push_back(new AdaptiveCache<string, string>(keys * .25));
-    arcs.push_back(new AdaptiveCache<string, string>(keys * .25, keys * .5));
-    farcs.push_back(new FlexARC<string, string>(keys * .25, keys));
-    lrus.push_back(new LRUCache<string, string>(keys * .25));
+    arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+        base_size * .25));
+    arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+        base_size * .25, base_size * .5));
+    farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
+        base_size * .25, base_size));
+    lrus.push_back(
+        new LRUCache<string, int64_t, NopLock, TraceSizer>(base_size * .25));
   } else {
     const vector<double> cache_sizes{.05, .1, .5, 1.0};
     const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
     for (double sz : cache_sizes) {
-      arcs.push_back(new AdaptiveCache<string, string>(keys * sz));
+      arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+          base_size * sz));
       if (FLAGS_include_lru) {
-        lrus.push_back(new LRUCache<string, string>(keys * sz));
+        lrus.push_back(
+            new LRUCache<string, int64_t, NopLock, TraceSizer>(base_size * sz));
       }
       for (double gs : ghost_sizes) {
-        farcs.push_back(new FlexARC<string, string>(keys * sz, keys * sz * gs));
+        farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
+            base_size * sz, base_size * sz * gs));
       }
     }
   }
 
   if (FLAGS_include_tiered) {
     TieredArc* tiered = new TieredArc();
-    tiered->add_cache(10,
-                      make_shared<AdaptiveCache<string, string>>(keys * .25));
+    tiered->add_cache(
+        10, make_shared<AdaptiveCache<string, int64_t, NopLock, TraceSizer>>(
+                base_size * .25));
     tiered_caches.push_back(tiered);
   }
 
-  Test(&results, keys, FLAGS_iters);
+  Test(&results, base_size, FLAGS_iters);
   printf("%s\n", results.ToString().c_str());
 
   for (auto t : traces) {

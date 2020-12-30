@@ -11,9 +11,9 @@ cache::Stats TestTrace(Cache cache, cache::Trace* trace) {
     const cache::Request* r = trace->next();
     if (r == nullptr)
       break;
-    std::shared_ptr<std::string> val = cache.get(r->key);
+    std::shared_ptr<int64_t> val = cache.get(r->key);
     if (!val) {
-      cache.add_to_cache(r->key, std::make_shared<std::string>(r->value));
+      cache.add_to_cache(r->key, std::make_shared<int64_t>(r->value));
     }
   }
   return cache.stats();
@@ -48,11 +48,11 @@ DEFINE_validator(ghost_increment, &validate_cache_parameters);
 
 void vary_ghost_size() {
   cache::FixedTrace trace(cache::TraceGen::ZipfianDistribution(
-      42, 10000, 850, FLAGS_zipf_parameter, "value"));
+      42, 10000, 850, FLAGS_zipf_parameter, 24));
   for (int64_t gs = FLAGS_ghost_begin; gs <= FLAGS_ghost_end;
        gs += FLAGS_ghost_increment) {
     const auto stats = TestTrace(
-        cache::FlexARC<std::string, std::string>(FLAGS_cache_size, gs), &trace);
+        cache::FlexARC<std::string, int64_t>(FLAGS_cache_size, gs), &trace);
     print_csv_line(FLAGS_cache_size, gs, stats);
   }
 }

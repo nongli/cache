@@ -49,7 +49,7 @@ int64_t Zipfian::Gen() {
 }
 
 vector<Request> TraceGen::SameKeyTrace(int64_t n, string_view k,
-                                       string_view v) {
+                                       int64_t v) {
   vector<Request> result;
   for (int i = 0; i < n; ++i) {
     result.push_back(Request(k, v));
@@ -57,7 +57,7 @@ vector<Request> TraceGen::SameKeyTrace(int64_t n, string_view k,
   return result;
 }
 
-vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, string_view v) {
+vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, int64_t v) {
   vector<Request> result;
   for (int64_t i = 0; i < n; ++i) {
     int64_t key = i % k;
@@ -90,7 +90,7 @@ void InterleavdTrace::Reset() {
 }
 
 template <class Distribution>
-vector<Request> Gen(int64_t n, Distribution& d, string_view v) {
+vector<Request> Gen(int64_t n, Distribution& d, int64_t v) {
   vector<Request> result;
   random_device rd{};
   mt19937 gen{rd()};
@@ -101,19 +101,19 @@ vector<Request> Gen(int64_t n, Distribution& d, string_view v) {
 }
 
 vector<Request> TraceGen::NormalDistribution(int64_t n, double mean,
-                                             double stddev, string_view v) {
+                                             double stddev, int64_t v) {
   normal_distribution<> d{mean, stddev};
   return Gen(n, d, v);
 }
 
 vector<Request> TraceGen::PoissonDistribution(int64_t n, double mean,
-                                              string_view v) {
+                                              int64_t v) {
   poisson_distribution<> d{mean};
   return Gen(n, d, v);
 }
 
 vector<Request> TraceGen::ZipfianDistribution(int64_t n, int64_t k,
-                                              double alpha, string_view v) {
+                                              double alpha, int64_t v) {
   Zipfian zipf(k, alpha);
   vector<Request> result;
   for (int64_t i = 0; i < n; ++i) {
@@ -129,7 +129,7 @@ vector<Request> TraceGen::ZipfianDistribution(int64_t n, int64_t k,
 
 vector<Request> TraceGen::ZipfianDistribution(uint32_t seed, int64_t n,
                                               int64_t k, double alpha,
-                                              string_view v) {
+                                              int64_t v) {
   srand(seed);
   return TraceGen::ZipfianDistribution(n, k, alpha, v);
 }
