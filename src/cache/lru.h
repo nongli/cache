@@ -298,7 +298,7 @@ private:
     std::string key = remove->key;
     evicted_size = _sizer(remove->value.get());
     _current_size -= evicted_size;
-    int64_t removed = _access_map.erase(remove->key);
+    int64_t removed UNUSED = _access_map.erase(remove->key);
     // We should have no more than one element with the key.
     assert(removed == 1);
     ++_stats.num_evicted;

@@ -4,6 +4,9 @@
 #include <cstring>
 #include <string>
 
+// Useful for variables only used in assertions.
+#define UNUSED __attribute__((unused))
+
 namespace cache {
 
 struct Stats {
