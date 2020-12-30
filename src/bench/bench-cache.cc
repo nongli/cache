@@ -132,8 +132,39 @@ int64_t ParseMemSpec(const string& mem_spec_str) {
 }
 
 template <class Cache>
-void Test(TablePrinter* results, int n, const string& name, Trace* trace,
+void Test(TablePrinter* results, int64_t n, const string& name, Trace* trace,
           Cache* cache, CacheType type, int iters) {
+  string label;
+  switch (type) {
+  case CacheType::Arc:
+    if (cache->filter_size() > 0) {
+      label = "arc-" + to_string(cache->max_size() * 100 / n) + "-filter";
+    } else {
+      label = "arc-" + to_string(cache->max_size() * 100 / n);
+    }
+    break;
+  case CacheType::Lru:
+    label = "lru-" + to_string(cache->max_size() * 100 / n);
+    break;
+  case CacheType::Farc:
+    label =
+        "farc-" + to_string(cache->max_size() * 100 / n) + "-" +
+        to_string(
+            dynamic_cast<FlexARC<string, int64_t, NopLock, TraceSizer>*>(cache)
+                ->ghost_size() *
+            100 / cache->max_size());
+    break;
+  case CacheType::Belady:
+    label = "belady-" + to_string(cache->max_size() * 100 / n);
+    break;
+  case CacheType::Tiered:
+    label = "tiered-" + to_string(cache->max_size() * 100 / n);
+    break;
+  default:
+    assert(false);
+  }
+  cerr << "Testing adaptive cache (" << label << ") on trace " << name << endl;
+
   cache->clear();
 
   int64_t total_vals = 0;
@@ -149,6 +180,9 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
       }
       shared_ptr<int64_t> val = cache->get(r->key);
       ++total_vals;
+      if (total_vals % 1000000 == 0) {
+        cerr << "   ...tested " << total_vals << " values" << endl;
+      }
       if (!val) {
         cache->add_to_cache(r->key, make_shared<int64_t>(r->value));
       }
@@ -157,39 +191,12 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
     total_micros +=
         chrono::duration_cast<chrono::microseconds>(end - start).count();
   }
+  cerr << "    Completed in  " << total_micros / 1000 << " ms" << endl;
 
   Stats stats = cache->stats();
   vector<string> row;
   row.push_back(name);
-  switch (type) {
-  case CacheType::Arc:
-    if (cache->filter_size() > 0) {
-      row.push_back("arc-" + to_string(cache->max_size() * 100 / n) +
-                    "-filter");
-    } else {
-      row.push_back("arc-" + to_string(cache->max_size() * 100 / n));
-    }
-    break;
-  case CacheType::Lru:
-    row.push_back("lru-" + to_string(cache->max_size() * 100 / n));
-    break;
-  case CacheType::Farc:
-    row.push_back(
-        "farc-" + to_string(cache->max_size() * 100 / n) + "-" +
-        to_string(
-            dynamic_cast<FlexARC<string, int64_t, NopLock, TraceSizer>*>(cache)
-                ->ghost_size() *
-            100 / cache->max_size()));
-    break;
-  case CacheType::Belady:
-    row.push_back("belady-" + to_string(cache->max_size() * 100 / n));
-    break;
-  case CacheType::Tiered:
-    row.push_back("tiered-" + to_string(cache->max_size() * 100 / n));
-    break;
-  default:
-    assert(false);
-  }
+  row.push_back(label);
   row.push_back(to_string(stats.num_hits));
   row.push_back(to_string(stats.num_misses));
   row.push_back(to_string(stats.num_evicted));
@@ -238,7 +245,7 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   results->AddRow(row);
 }
 
-void Test(TablePrinter* results, int n, int iters) {
+void Test(TablePrinter* results, int64_t n, int iters) {
   for (auto trace : traces) {
     for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
@@ -304,6 +311,7 @@ int main(int argc, char** argv) {
   if (!FLAGS_base_size.empty()) {
     base_size = ParseMemSpec(FLAGS_base_size);
   }
+  cerr << "Using base size: " << base_size << endl;
 
   if (FLAGS_trace.empty()) {
     //
