@@ -71,7 +71,7 @@ DEFINE_bool(include_tiered, false, "Include tiered cache in tests.");
 
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
-DEFINE_int64(base_size, 0, "Base size for cache. Defaults to unique_keys");
+DEFINE_string(base_size, "", "Base size for cache. Defaults to unique_keys");
 DEFINE_int64(iters, 5, "Number of times to repeated the trace.");
 DEFINE_string(trace, "", "Name of trace to run.");
 DEFINE_int64(trace_limits, 0, "How much of the trace to use. 0 means run all");
@@ -90,6 +90,46 @@ vector<FlexARC<string, int64_t, NopLock, TraceSizer>*> farcs;
 vector<TieredArc*> tiered_caches;
 
 enum class CacheType { Lru, Arc, Farc, Belady, Tiered };
+
+int64_t ParseMemSpec(const string& mem_spec_str) {
+  if (mem_spec_str.empty()) return 0;
+
+  int64_t multiplier = -1;
+  int32_t number_str_len = mem_spec_str.size();
+
+  // Look for an accepted suffix such as "MB", "M", or "%".
+  string::const_reverse_iterator suffix_char = mem_spec_str.rbegin();
+  if (*suffix_char == 'b' || *suffix_char == 'B') {
+    // Skip "B", the default is bytes anyways.
+    if (suffix_char == mem_spec_str.rend()) return -1;
+    suffix_char++;
+    number_str_len--;
+  }
+  switch (*suffix_char) {
+    case 'g':
+    case 'G':
+      // Gigabytes.
+      number_str_len--;
+      multiplier = 1024L * 1024L * 1024L;
+      break;
+    case 'm':
+    case 'M':
+      // Megabytes.
+      number_str_len--;
+      multiplier = 1024L * 1024L;
+      break;
+  }
+
+  int64_t bytes;
+  if (multiplier != -1) {
+    // Parse float - MB or GB
+    double limit_val = stod(string(mem_spec_str.data(), number_str_len));
+    bytes = multiplier * limit_val;
+  } else {
+    bytes = stol(string(mem_spec_str.data(), number_str_len));
+  }
+  return bytes;
+}
 
 template <class Cache>
 void Test(TablePrinter* results, int n, const string& name, Trace* trace,
@@ -260,9 +300,9 @@ int main(int argc, char** argv) {
   results.AddColumn("micros/val", false);
 
   const int keys = FLAGS_unique_keys;
-  int64_t base_size = FLAGS_base_size;
-  if (base_size == 0) {
-    base_size = keys;
+  int64_t base_size = keys;
+  if (!FLAGS_base_size.empty()) {
+    base_size = ParseMemSpec(FLAGS_base_size);
   }
 
   if (FLAGS_trace.empty()) {
