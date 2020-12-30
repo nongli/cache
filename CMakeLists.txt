@@ -13,7 +13,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # General compiler flags
-set(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare -Werror=switch -Werror=return-type")
+set(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare -Werror -Werror=switch -Werror=return-type")
+set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -fno-omit-frame-pointer -ggdb")
 set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -march=haswell")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMMON_FLAGS}")
 
@@ -22,7 +23,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
   set(EXECUTABLE_OUTPUT_PREFIX "${CMAKE_SOURCE_DIR}/build/release")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -Werror -fno-omit-frame-pointer -fsanitize=address,undefined")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
   set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address,undefined")
   set(EXECUTABLE_OUTPUT_PREFIX "${CMAKE_SOURCE_DIR}/build/debug")
 endif()
