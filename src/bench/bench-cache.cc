@@ -74,6 +74,7 @@ DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
 DEFINE_int64(base_size, 0, "Base size for cache. Defaults to unique_keys");
 DEFINE_int64(iters, 5, "Number of times to repeated the trace.");
 DEFINE_string(trace, "", "Name of trace to run.");
+DEFINE_int64(trace_limits, 0, "How much of the trace to use. 0 means run all");
 
 using namespace std;
 using namespace cache;
@@ -297,7 +298,7 @@ int main(int argc, char** argv) {
     med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 1));
     AddTrace("med-seq-cycle", med_seq_cycle);
   } else {
-    TraceReader* reader = new TraceReader(FLAGS_trace);
+    TraceReader* reader = new TraceReader(FLAGS_trace, FLAGS_trace_limits);
     AddTrace(FLAGS_trace, reader);
   }
   //
