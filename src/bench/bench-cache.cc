@@ -71,6 +71,7 @@ DEFINE_bool(include_tiered, false, "Include tiered cache in tests.");
 
 DEFINE_bool(minimal, true, "Include minimal (aka) smoke caches in tests.");
 DEFINE_int64(unique_keys, 20000, "Number of unique keys to test.");
+DEFINE_int64(base_size, 0, "Base size for cache. Defaults to unique_keys");
 DEFINE_int64(iters, 5, "Number of times to repeated the trace.");
 DEFINE_string(trace, "", "Name of trace to run.");
 
@@ -258,6 +259,10 @@ int main(int argc, char** argv) {
   results.AddColumn("micros/val", false);
 
   const int keys = FLAGS_unique_keys;
+  int64_t base_size = FLAGS_base_size;
+  if (base_size == 0) {
+    base_size = keys;
+  }
 
   if (FLAGS_trace.empty()) {
     //
@@ -299,27 +304,27 @@ int main(int argc, char** argv) {
   // Configure caches
   //
   if (FLAGS_minimal) {
-    arcs.push_back(
-        new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(keys * .25));
     arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
-        keys * .25, keys * .5));
-    farcs.push_back(
-        new FlexARC<string, int64_t, NopLock, TraceSizer>(keys * .25, keys));
+        base_size * .25));
+    arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+        base_size * .25, base_size * .5));
+    farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
+        base_size * .25, base_size));
     lrus.push_back(
-        new LRUCache<string, int64_t, NopLock, TraceSizer>(keys * .25));
+        new LRUCache<string, int64_t, NopLock, TraceSizer>(base_size * .25));
   } else {
     const vector<double> cache_sizes{.05, .1, .5, 1.0};
     const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
     for (double sz : cache_sizes) {
-      arcs.push_back(
-          new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(keys * sz));
+      arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+          base_size * sz));
       if (FLAGS_include_lru) {
         lrus.push_back(
-            new LRUCache<string, int64_t, NopLock, TraceSizer>(keys * sz));
+            new LRUCache<string, int64_t, NopLock, TraceSizer>(base_size * sz));
       }
       for (double gs : ghost_sizes) {
         farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
-            keys * sz, keys * sz * gs));
+            base_size * sz, base_size * sz * gs));
       }
     }
   }
@@ -328,11 +333,11 @@ int main(int argc, char** argv) {
     TieredArc* tiered = new TieredArc();
     tiered->add_cache(
         10, make_shared<AdaptiveCache<string, int64_t, NopLock, TraceSizer>>(
-                keys * .25));
+                base_size * .25));
     tiered_caches.push_back(tiered);
   }
 
-  Test(&results, keys, FLAGS_iters);
+  Test(&results, base_size, FLAGS_iters);
   printf("%s\n", results.ToString().c_str());
 
   for (auto t : traces) {
