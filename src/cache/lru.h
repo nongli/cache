@@ -216,7 +216,6 @@ public:
     // lists need. Alternately the no_evict form is enough?
     std::lock_guard<Lock> l(_lock);
     add_to_cache_no_evict_impl(key, value);
-    assert(_current_size == _access_map.size());
     int64_t before = _current_size;
     while (_current_size > _max_size) {
       size_t e;
