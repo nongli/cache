@@ -65,7 +65,10 @@ private:
 class TraceReader : public Trace {
 public:
   TraceReader(std::string& fname) : _file(fname), _file_name(fname), _r{} {}
-  virtual void Reset() { _file.seekg(0); }
+  virtual void Reset() {
+    _file.clear();
+    _file.seekg(0);
+  }
   virtual const Request* next() {
     std::string line;
     if (std::getline(_file, line)) {

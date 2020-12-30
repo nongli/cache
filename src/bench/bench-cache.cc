@@ -77,12 +77,14 @@ DEFINE_string(trace, "", "Name of trace to run.");
 using namespace std;
 using namespace cache;
 
-typedef TieredCache<string, int64_t, AdaptiveCache<string, int64_t>> TieredArc;
+typedef TieredCache<string, int64_t,
+                    AdaptiveCache<string, int64_t, NopLock, TraceSizer>>
+    TieredArc;
 
 map<string, Trace*> traces;
-vector<AdaptiveCache<string, int64_t>*> arcs;
-vector<LRUCache<string, int64_t>*> lrus;
-vector<FlexARC<string, int64_t>*> farcs;
+vector<AdaptiveCache<string, int64_t, NopLock, TraceSizer>*> arcs;
+vector<LRUCache<string, int64_t, NopLock, TraceSizer>*> lrus;
+vector<FlexARC<string, int64_t, NopLock, TraceSizer>*> farcs;
 vector<TieredArc*> tiered_caches;
 
 enum class CacheType { Lru, Arc, Farc, Belady, Tiered };
@@ -132,8 +134,10 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   case CacheType::Farc:
     row.push_back(
         "farc-" + to_string(cache->max_size() * 100 / n) + "-" +
-        to_string(dynamic_cast<FlexARC<string, int64_t>*>(cache)->ghost_size() *
-                  100 / cache->max_size()));
+        to_string(
+            dynamic_cast<FlexARC<string, int64_t, NopLock, TraceSizer>*>(cache)
+                ->ghost_size() *
+            100 / cache->max_size()));
     break;
   case CacheType::Belady:
     row.push_back("belady-" + to_string(cache->max_size() * 100 / n));
@@ -194,13 +198,13 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
 
 void Test(TablePrinter* results, int n, int iters) {
   for (auto trace : traces) {
-    for (AdaptiveCache<string, int64_t>* cache : arcs) {
+    for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
     }
-    for (LRUCache<string, int64_t>* cache : lrus) {
+    for (LRUCache<string, int64_t, NopLock, TraceSizer>* cache : lrus) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
-    for (FlexARC<string, int64_t>* cache : farcs) {
+    for (FlexARC<string, int64_t, NopLock, TraceSizer>* cache : farcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Farc,
            iters);
     }
@@ -259,34 +263,33 @@ int main(int argc, char** argv) {
     //
     // Configure traces
     //
-    AddTrace("seq-unique",
-             new FixedTrace(TraceGen::CycleTrace(keys, keys, 42)));
+    AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, 1)));
     AddTrace("seq-cycle-10%",
-             new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, 42)));
+             new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, 1)));
     AddTrace("seq-cycle-50%",
-             new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, 42)));
-    AddTrace("zipf-1", new FixedTrace(TraceGen::ZipfianDistribution(
-                           0, keys, keys, 1, 42)));
+             new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, 1)));
+    AddTrace("zipf-1", new FixedTrace(
+                           TraceGen::ZipfianDistribution(0, keys, keys, 1, 1)));
     AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
-                            0, keys, keys, 0.7, 42)));
+                            0, keys, keys, 0.7, 1)));
 
     // zipf, all keys, zipf
     FixedTrace* zip_seq =
-        new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
-    zip_seq->Add(TraceGen::CycleTrace(keys, keys, 42));
-    zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
+        new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 1));
+    zip_seq->Add(TraceGen::CycleTrace(keys, keys, 1));
+    zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 1));
     AddTrace("zipf-seq", zip_seq);
 
     // tiny + all keys
     FixedTrace* tiny_seq_cycle =
-        new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, 42));
-    tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
+        new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, 1));
+    tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 1));
     AddTrace("tiny-seq-cycle", tiny_seq_cycle);
 
     // medium + all keys
     FixedTrace* med_seq_cycle =
-        new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, 42));
-    med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
+        new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, 1));
+    med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 1));
     AddTrace("med-seq-cycle", med_seq_cycle);
   } else {
     TraceReader* reader = new TraceReader(FLAGS_trace);
@@ -296,29 +299,36 @@ int main(int argc, char** argv) {
   // Configure caches
   //
   if (FLAGS_minimal) {
-    arcs.push_back(new AdaptiveCache<string, int64_t>(keys * .25));
-    arcs.push_back(new AdaptiveCache<string, int64_t>(keys * .25, keys * .5));
-    farcs.push_back(new FlexARC<string, int64_t>(keys * .25, keys));
-    lrus.push_back(new LRUCache<string, int64_t>(keys * .25));
+    arcs.push_back(
+        new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(keys * .25));
+    arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+        keys * .25, keys * .5));
+    farcs.push_back(
+        new FlexARC<string, int64_t, NopLock, TraceSizer>(keys * .25, keys));
+    lrus.push_back(
+        new LRUCache<string, int64_t, NopLock, TraceSizer>(keys * .25));
   } else {
     const vector<double> cache_sizes{.05, .1, .5, 1.0};
     const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
     for (double sz : cache_sizes) {
-      arcs.push_back(new AdaptiveCache<string, int64_t>(keys * sz));
+      arcs.push_back(
+          new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(keys * sz));
       if (FLAGS_include_lru) {
-        lrus.push_back(new LRUCache<string, int64_t>(keys * sz));
+        lrus.push_back(
+            new LRUCache<string, int64_t, NopLock, TraceSizer>(keys * sz));
       }
       for (double gs : ghost_sizes) {
-        farcs.push_back(
-            new FlexARC<string, int64_t>(keys * sz, keys * sz * gs));
+        farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
+            keys * sz, keys * sz * gs));
       }
     }
   }
 
   if (FLAGS_include_tiered) {
     TieredArc* tiered = new TieredArc();
-    tiered->add_cache(10,
-                      make_shared<AdaptiveCache<string, int64_t>>(keys * .25));
+    tiered->add_cache(
+        10, make_shared<AdaptiveCache<string, int64_t, NopLock, TraceSizer>>(
+                keys * .25));
     tiered_caches.push_back(tiered);
   }
 
