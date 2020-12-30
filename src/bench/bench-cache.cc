@@ -77,12 +77,12 @@ DEFINE_string(trace, "", "Name of trace to run.");
 using namespace std;
 using namespace cache;
 
-typedef TieredCache<string, string, AdaptiveCache<string, string>> TieredArc;
+typedef TieredCache<string, int64_t, AdaptiveCache<string, int64_t>> TieredArc;
 
 map<string, Trace*> traces;
-vector<AdaptiveCache<string, string>*> arcs;
-vector<LRUCache<string, string>*> lrus;
-vector<FlexARC<string, string>*> farcs;
+vector<AdaptiveCache<string, int64_t>*> arcs;
+vector<LRUCache<string, int64_t>*> lrus;
+vector<FlexARC<string, int64_t>*> farcs;
 vector<TieredArc*> tiered_caches;
 
 enum class CacheType { Lru, Arc, Farc, Belady, Tiered };
@@ -103,10 +103,10 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
       if (r == nullptr) {
         break;
       }
-      shared_ptr<string> val = cache->get(r->key);
+      shared_ptr<int64_t> val = cache->get(r->key);
       ++total_vals;
       if (!val) {
-        cache->add_to_cache(r->key, make_shared<string>(r->value));
+        cache->add_to_cache(r->key, make_shared<int64_t>(r->value));
       }
     }
     chrono::steady_clock::time_point end = chrono::steady_clock::now();
@@ -132,7 +132,7 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
   case CacheType::Farc:
     row.push_back(
         "farc-" + to_string(cache->max_size() * 100 / n) + "-" +
-        to_string(dynamic_cast<FlexARC<string, string>*>(cache)->ghost_size() *
+        to_string(dynamic_cast<FlexARC<string, int64_t>*>(cache)->ghost_size() *
                   100 / cache->max_size()));
     break;
   case CacheType::Belady:
@@ -194,13 +194,13 @@ void Test(TablePrinter* results, int n, const string& name, Trace* trace,
 
 void Test(TablePrinter* results, int n, int iters) {
   for (auto trace : traces) {
-    for (AdaptiveCache<string, string>* cache : arcs) {
+    for (AdaptiveCache<string, int64_t>* cache : arcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
     }
-    for (LRUCache<string, string>* cache : lrus) {
+    for (LRUCache<string, int64_t>* cache : lrus) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
-    for (FlexARC<string, string>* cache : farcs) {
+    for (FlexARC<string, int64_t>* cache : farcs) {
       Test(results, n, trace.first, trace.second, cache, CacheType::Farc,
            iters);
     }
@@ -209,7 +209,7 @@ void Test(TablePrinter* results, int n, int iters) {
            iters);
     }
     if (FLAGS_include_belady) {
-      BeladyCache<string, string> cache(n * .25, trace.second);
+      BeladyCache<string, int64_t> cache(n * .25, trace.second);
       Test(results, n, trace.first, trace.second, &cache, CacheType::Belady,
            iters);
     }
@@ -258,53 +258,53 @@ int main(int argc, char** argv) {
   //
   // Configure traces
   //
-  AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, "v")));
+  AddTrace("seq-unique", new FixedTrace(TraceGen::CycleTrace(keys, keys, 42)));
   AddTrace("seq-cycle-10%",
-           new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, "v")));
+           new FixedTrace(TraceGen::CycleTrace(keys, keys * .1, 42)));
   AddTrace("seq-cycle-50%",
-           new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, "v")));
+           new FixedTrace(TraceGen::CycleTrace(keys, keys * .5, 42)));
   AddTrace("zipf-1", new FixedTrace(
-                         TraceGen::ZipfianDistribution(0, keys, keys, 1, "v")));
+                         TraceGen::ZipfianDistribution(0, keys, keys, 1, 42)));
   AddTrace("zipf-.7", new FixedTrace(TraceGen::ZipfianDistribution(
-                          0, keys, keys, 0.7, "v")));
+                          0, keys, keys, 0.7, 42)));
 
   // zipf, all keys, zipf
   FixedTrace* zip_seq =
-      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
-  zip_seq->Add(TraceGen::CycleTrace(keys, keys, "v"));
-  zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, "v"));
+      new FixedTrace(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
+  zip_seq->Add(TraceGen::CycleTrace(keys, keys, 42));
+  zip_seq->Add(TraceGen::ZipfianDistribution(0, keys, keys, 0.7, 42));
   AddTrace("zipf-seq", zip_seq);
 
   // tiny + all keys
   FixedTrace* tiny_seq_cycle =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, "v"));
-  tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .01, 42));
+  tiny_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
   AddTrace("tiny-seq-cycle", tiny_seq_cycle);
 
   // medium + all keys
   FixedTrace* med_seq_cycle =
-      new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, "v"));
-  med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, "v"));
+      new FixedTrace(TraceGen::CycleTrace(keys, keys * .25, 42));
+  med_seq_cycle->Add(TraceGen::CycleTrace(keys, keys, 42));
   AddTrace("med-seq-cycle", med_seq_cycle);
 
   //
   // Configure caches
   //
   if (FLAGS_minimal) {
-    arcs.push_back(new AdaptiveCache<string, string>(keys * .25));
-    arcs.push_back(new AdaptiveCache<string, string>(keys * .25, keys * .5));
-    farcs.push_back(new FlexARC<string, string>(keys * .25, keys));
-    lrus.push_back(new LRUCache<string, string>(keys * .25));
+    arcs.push_back(new AdaptiveCache<string, int64_t>(keys * .25));
+    arcs.push_back(new AdaptiveCache<string, int64_t>(keys * .25, keys * .5));
+    farcs.push_back(new FlexARC<string, int64_t>(keys * .25, keys));
+    lrus.push_back(new LRUCache<string, int64_t>(keys * .25));
   } else {
     const vector<double> cache_sizes{.05, .1, .5, 1.0};
     const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
     for (double sz : cache_sizes) {
-      arcs.push_back(new AdaptiveCache<string, string>(keys * sz));
+      arcs.push_back(new AdaptiveCache<string, int64_t>(keys * sz));
       if (FLAGS_include_lru) {
-        lrus.push_back(new LRUCache<string, string>(keys * sz));
+        lrus.push_back(new LRUCache<string, int64_t>(keys * sz));
       }
       for (double gs : ghost_sizes) {
-        farcs.push_back(new FlexARC<string, string>(keys * sz, keys * sz * gs));
+        farcs.push_back(new FlexARC<string, int64_t>(keys * sz, keys * sz * gs));
       }
     }
   }
@@ -312,7 +312,7 @@ int main(int argc, char** argv) {
   if (FLAGS_include_tiered) {
     TieredArc* tiered = new TieredArc();
     tiered->add_cache(10,
-                      make_shared<AdaptiveCache<string, string>>(keys * .25));
+                      make_shared<AdaptiveCache<string, int64_t>>(keys * .25));
     tiered_caches.push_back(tiered);
   }
 

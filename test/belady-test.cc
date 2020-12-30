@@ -4,15 +4,15 @@
 using namespace cache;
 using namespace std;
 
-void TestTrace(BeladyCache<string, string>* cache, Trace* trace) {
+void TestTrace(BeladyCache<string, int64_t>* cache, Trace* trace) {
   while (true) {
     const Request* r = trace->next();
     if (r == nullptr)
       break;
 
-    shared_ptr<string> val = cache->get(r->key);
+    shared_ptr<int64_t> val = cache->get(r->key);
     if (!val) {
-      cache->add_to_cache(r->key, make_shared<string>(r->value));
+      cache->add_to_cache(r->key, make_shared<int64_t>(r->value));
     }
   }
 }
@@ -20,8 +20,8 @@ void TestTrace(BeladyCache<string, string>* cache, Trace* trace) {
 TEST(BeladyTest, Basic) {
   // Trace goes 0..10, twice on a cache of 5. A typical cache would miss all
   // the time but this should hit 25%
-  FixedTrace trace(TraceGen::CycleTrace(20, 10, "value"));
-  BeladyCache<string, string> cache(5, &trace);
+  FixedTrace trace(TraceGen::CycleTrace(20, 10, 42));
+  BeladyCache<string, int64_t> cache(5, &trace);
 
   TestTrace(&cache, &trace);
   ASSERT_EQ(5, cache.stats().num_hits);

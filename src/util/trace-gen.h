@@ -10,12 +10,10 @@ namespace cache {
 
 struct Request {
   std::string key;
-  std::string value;
-  int64_t size;
+  int64_t value;
 
   Request() = default;
-  Request(std::string_view k, std::string_view v) : key(k), value(v), size(0) {}
-  Request(std::string_view k, int64_t s) : key(k), value(""), size(s) {}
+  Request(std::string_view k, int64_t v) : key(k), value(v) {}
 };
 
 class Trace {
@@ -71,7 +69,7 @@ class TraceReader : public Trace {
     std::string line;
     if (std::getline(_file, line)) {
       std::stringstream l(line);
-      l >> _r.key >> _r.size;
+      l >> _r.key >> _r.value;
       return &_r;
     } else {
       return NULL;
@@ -98,28 +96,28 @@ class TraceGen {
 public:
   // Generate a trace with n copies of k,v
   static std::vector<Request> SameKeyTrace(int64_t n, std::string_view k,
-                                           std::string_view v);
+                                           int64_t v);
 
   // Generate a trace that cycles from 0 to k up to N values.
   // e.g. k = N generates all unique keys
   static std::vector<Request> CycleTrace(int64_t n, int64_t k,
-                                         std::string_view v);
+                                         int64_t v);
 
   // Generate a trace that follows a normal distribution with mean and stddev
   static std::vector<Request>
-  NormalDistribution(int64_t n, double mean, double stdev, std::string_view v);
+  NormalDistribution(int64_t n, double mean, double stdev, int64_t v);
 
   // Generate a trace that follows a poison distribution with mean
   static std::vector<Request> PoissonDistribution(int64_t n, double mean,
-                                                  std::string_view v);
+                                                  int64_t v);
 
   // Generate a trace that follows a zipfian distribution with values [1, k]
   static std::vector<Request>
-  ZipfianDistribution(int64_t n, int64_t k, double alpha, std::string_view v);
+  ZipfianDistribution(int64_t n, int64_t k, double alpha, int64_t v);
 
   static std::vector<Request> ZipfianDistribution(uint32_t seed, int64_t n,
                                                   int64_t k, double alpha,
-                                                  std::string_view v);
+                                                  int64_t v);
 };
 
 } // namespace cache

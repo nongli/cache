@@ -8,18 +8,18 @@ using namespace cache;
 using namespace std;
 
 TEST(SameKeyTrace, Basic) {
-  vector<Request> trace = TraceGen::SameKeyTrace(1, "key", "value");
+  vector<Request> trace = TraceGen::SameKeyTrace(1, "key", 4);
   ASSERT_EQ(trace.size(), 1);
   for (const Request& r: trace) {
     ASSERT_EQ(r.key, "key");
-    ASSERT_EQ(r.value, "value");
+    ASSERT_EQ(r.value, 4);
   }
 
-  trace = TraceGen::SameKeyTrace(10, "key", "value");
+  trace = TraceGen::SameKeyTrace(10, "key", 4);
   ASSERT_EQ(trace.size(), 10);
   for (const Request& r: trace) {
     ASSERT_EQ(r.key, "key");
-    ASSERT_EQ(r.value, "value");
+    ASSERT_EQ(r.value, 4);
   }
 }
 
@@ -36,24 +36,24 @@ int ComputeUniqueKeys(Trace* trace) {
 }
 
 TEST(CycleTrace, Basic) {
-  FixedTrace trace1(TraceGen::CycleTrace(100, 100, "v"));
+  FixedTrace trace1(TraceGen::CycleTrace(100, 100, 4));
   ASSERT_EQ(100, ComputeUniqueKeys(&trace1));
 
-  FixedTrace trace2(TraceGen::CycleTrace(100, 10, "v"));
+  FixedTrace trace2(TraceGen::CycleTrace(100, 10, 4));
   ASSERT_EQ(10, ComputeUniqueKeys(&trace2));
 }
 
 TEST(ZipfianTrace, Basic) {
-  FixedTrace trace1(TraceGen::ZipfianDistribution(0, 100, 100, 0.7, "v"));
+  FixedTrace trace1(TraceGen::ZipfianDistribution(0, 100, 100, 0.7, 4));
   ASSERT_EQ(57, ComputeUniqueKeys(&trace1));
 
-  FixedTrace trace2(TraceGen::ZipfianDistribution(0, 100, 100, 1, "v"));
+  FixedTrace trace2(TraceGen::ZipfianDistribution(0, 100, 100, 1, 4));
   ASSERT_EQ(49, ComputeUniqueKeys(&trace2));
 
-  FixedTrace trace3(TraceGen::ZipfianDistribution(0, 100, 20, 0.7, "v"));
+  FixedTrace trace3(TraceGen::ZipfianDistribution(0, 100, 20, 0.7, 4));
   ASSERT_EQ(20, ComputeUniqueKeys(&trace3));
 
-  FixedTrace trace4(TraceGen::ZipfianDistribution(0, 100, 20, 1, "v"));
+  FixedTrace trace4(TraceGen::ZipfianDistribution(0, 100, 20, 1, 4));
   ASSERT_EQ(20, ComputeUniqueKeys(&trace4));
 }
 
