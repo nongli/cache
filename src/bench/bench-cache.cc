@@ -1,3 +1,4 @@
+#include "bench/bench-util.h"
 #include "cache/arc.h"
 #include "cache/flex-arc.h"
 #include "cache/tiered-cache.h"
@@ -89,181 +90,25 @@ vector<LRUCache<string, int64_t, NopLock, TraceSizer>*> lrus;
 vector<FlexARC<string, int64_t, NopLock, TraceSizer>*> farcs;
 vector<TieredArc*> tiered_caches;
 
-enum class CacheType { Lru, Arc, Farc, Belady, Tiered };
-
-int64_t ParseMemSpec(const string& mem_spec_str) {
-  if (mem_spec_str.empty()) return 0;
-
-  int64_t multiplier = -1;
-  int32_t number_str_len = mem_spec_str.size();
-
-  // Look for an accepted suffix such as "MB", "M", or "%".
-  string::const_reverse_iterator suffix_char = mem_spec_str.rbegin();
-  if (*suffix_char == 'b' || *suffix_char == 'B') {
-    // Skip "B", the default is bytes anyways.
-    if (suffix_char == mem_spec_str.rend()) return -1;
-    suffix_char++;
-    number_str_len--;
-  }
-  switch (*suffix_char) {
-    case 'g':
-    case 'G':
-      // Gigabytes.
-      number_str_len--;
-      multiplier = 1024L * 1024L * 1024L;
-      break;
-    case 'm':
-    case 'M':
-      // Megabytes.
-      number_str_len--;
-      multiplier = 1024L * 1024L;
-      break;
-  }
-
-  int64_t bytes;
-  if (multiplier != -1) {
-    // Parse float - MB or GB
-    double limit_val = stod(string(mem_spec_str.data(), number_str_len));
-    bytes = multiplier * limit_val;
-  } else {
-    bytes = stol(string(mem_spec_str.data(), number_str_len));
-  }
-  return bytes;
-}
-
-template <class Cache>
-void Test(TablePrinter* results, int64_t n, const string& name, Trace* trace,
-          Cache* cache, CacheType type, int iters) {
-  string label;
-  switch (type) {
-  case CacheType::Arc:
-    if (cache->filter_size() > 0) {
-      label = "arc-" + to_string(cache->max_size() * 100 / n) + "-filter";
-    } else {
-      label = "arc-" + to_string(cache->max_size() * 100 / n);
-    }
-    break;
-  case CacheType::Lru:
-    label = "lru-" + to_string(cache->max_size() * 100 / n);
-    break;
-  case CacheType::Farc:
-    label =
-        "farc-" + to_string(cache->max_size() * 100 / n) + "-" +
-        to_string(
-            dynamic_cast<FlexARC<string, int64_t, NopLock, TraceSizer>*>(cache)
-                ->ghost_size() *
-            100 / cache->max_size());
-    break;
-  case CacheType::Belady:
-    label = "belady-" + to_string(cache->max_size() * 100 / n);
-    break;
-  case CacheType::Tiered:
-    label = "tiered-" + to_string(cache->max_size() * 100 / n);
-    break;
-  default:
-    assert(false);
-  }
-  cerr << "Testing adaptive cache (" << label << ") on trace " << name << endl;
-
-  cache->clear();
-
-  int64_t total_vals = 0;
-  double total_micros = 0;
-  for (int i = 0; i < iters; ++i) {
-    trace->Reset();
-    cache->reset();
-    chrono::steady_clock::time_point start = chrono::steady_clock::now();
-    while (true) {
-      const Request* r = trace->next();
-      if (r == nullptr) {
-        break;
-      }
-      shared_ptr<int64_t> val = cache->get(r->key);
-      ++total_vals;
-      if (total_vals % 2500000 == 0) {
-        cerr << "   ...tested " << total_vals << " values" << endl;
-      }
-      if (!val) {
-        cache->add_to_cache(r->key, make_shared<int64_t>(r->value));
-      }
-    }
-    chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    total_micros +=
-        chrono::duration_cast<chrono::microseconds>(end - start).count();
-  }
-  cerr << "    Completed in  " << total_micros / 1000 << " ms" << endl;
-
-  Stats stats = cache->stats();
-  vector<string> row;
-  row.push_back(name);
-  row.push_back(label);
-  row.push_back(to_string(stats.num_hits));
-  row.push_back(to_string(stats.num_misses));
-  row.push_back(to_string(stats.num_evicted));
-  if (type == CacheType::Lru) {
-    row.push_back("-");
-    row.push_back("-");
-  } else {
-    row.push_back(to_string(cache->p()));
-    row.push_back(to_string(cache->max_p()));
-  }
-  row.push_back(
-      to_string(stats.num_hits * 100 / (stats.num_hits + stats.num_misses)));
-  if (type == CacheType::Lru) {
-    row.push_back("-");
-    row.push_back("-");
-  } else {
-    if (stats.num_hits > 0) {
-      row.push_back(to_string(stats.lru_hits * 100 / stats.num_hits));
-      row.push_back(to_string(stats.lfu_hits * 100 / stats.num_hits));
-    } else {
-      row.push_back("-");
-      row.push_back("-");
-    }
-  }
-  row.push_back(
-      to_string(stats.num_misses * 100 / (stats.num_hits + stats.num_misses)));
-  if (type == CacheType::Lru) {
-    row.push_back("-");
-    row.push_back("-");
-  } else {
-    if (stats.num_misses > 0) {
-      row.push_back(to_string(stats.lru_ghost_hits * 100 / stats.num_misses));
-      row.push_back(to_string(stats.lfu_ghost_hits * 100 / stats.num_misses));
-    } else {
-      row.push_back("-");
-      row.push_back("-");
-    }
-  }
-  if (stats.arc_filter > 0) {
-    row.push_back(to_string(stats.arc_filter));
-  } else {
-    row.push_back("-");
-  }
-  row.push_back(to_string(total_micros / total_vals));
-
-  results->AddRow(row);
-}
-
 void Test(TablePrinter* results, int64_t n, int iters) {
   for (auto trace : traces) {
     for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
+      Run(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
     }
     for (LRUCache<string, int64_t, NopLock, TraceSizer>* cache : lrus) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
+      Run(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
     for (FlexARC<string, int64_t, NopLock, TraceSizer>* cache : farcs) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Farc,
+      Run(results, n, trace.first, trace.second, cache, CacheType::Farc,
            iters);
     }
     for (TieredArc* cache : tiered_caches) {
-      Test(results, n, trace.first, trace.second, cache, CacheType::Tiered,
+      Run(results, n, trace.first, trace.second, cache, CacheType::Tiered,
            iters);
     }
     if (FLAGS_include_belady) {
       BeladyCache<string, int64_t> cache(n * .25, trace.second);
-      Test(results, n, trace.first, trace.second, &cache, CacheType::Belady,
+      Run(results, n, trace.first, trace.second, &cache, CacheType::Belady,
            iters);
     }
 
