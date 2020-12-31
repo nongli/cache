@@ -56,35 +56,7 @@ inline int64_t ParseMemSpec(const std::string& mem_spec_str) {
 template <class Cache>
 inline void Run(TablePrinter* results, int64_t n, const std::string& name,
                 Trace* trace, Cache* cache, CacheType type, int iters) {
-  std::string label;
-  switch (type) {
-  case CacheType::Arc:
-    if (cache->filter_size() > 0) {
-      label = "arc-" + std::to_string(cache->max_size() * 100 / n) + "-filter";
-    } else {
-      label = "arc-" + std::to_string(cache->max_size() * 100 / n);
-    }
-    break;
-  case CacheType::Lru:
-    label = "lru-" + std::to_string(cache->max_size() * 100 / n);
-    break;
-  case CacheType::Farc:
-    label =
-        "farc-" + std::to_string(cache->max_size() * 100 / n) + "-" +
-        std::to_string(
-            dynamic_cast<FlexARC<std::string, int64_t, NopLock, TraceSizer>*>(cache)
-                ->ghost_size() *
-            100 / cache->max_size());
-    break;
-  case CacheType::Belady:
-    label = "belady-" + std::to_string(cache->max_size() * 100 / n);
-    break;
-  case CacheType::Tiered:
-    label = "tiered-" + std::to_string(cache->max_size() * 100 / n);
-    break;
-  default:
-    assert(false);
-  }
+  std::string label = cache->label(n);
   std::cerr << "Testing adaptive cache (" << label << ") on trace " << name << std::endl;
 
   cache->clear();

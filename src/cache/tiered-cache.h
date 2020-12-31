@@ -81,6 +81,10 @@ public:
   inline int64_t filter_size() const { return 0; }
   inline Lock* get_lock() { return &_lock; }
 
+  const std::string label(int64_t n) const {
+    return "tiered-" + std::to_string(max_size() * 100 / n);
+  }
+
   std::shared_ptr<V> get(const K& key) {
     std::lock_guard<Lock> l(_lock);
     for (auto c: _caches) {

@@ -35,6 +35,14 @@ public:
   inline Lock* get_lock() { return &_lock; }
   void enable_trace(bool v) { _trace = v; }
 
+  const std::string label(int64_t n) const {
+    if (filter_size() > 0) {
+      return "arc-" + std::to_string(max_size() * 100 / n) + "-filter";
+    } else {
+      return "arc-" + std::to_string(max_size() * 100 / n);
+    }
+  }
+
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {

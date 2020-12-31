@@ -36,6 +36,11 @@ public:
   inline int64_t filter_size() const { return _filter.max_size(); }
   inline Lock* get_lock() { return &_lock; }
 
+  const std::string label(int64_t n) const {
+    return "farc-" + std::to_string(max_size() * 100 / n) + "-" +
+        std::to_string( ghost_size() * 100 / max_size());
+  }
+
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {

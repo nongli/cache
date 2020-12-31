@@ -158,6 +158,10 @@ public:
   inline int64_t max_p() const { return 0; }
   inline int64_t filter_size() const { return 0; }
 
+  const std::string label(int64_t n) const {
+    return "lru-" + std::to_string(max_size() * 100 / n);
+  }
+
   // Get value from the cache. If found bumps the element up in the LRU list.
   std::shared_ptr<V> get(const K& key) {
     std::lock_guard<Lock> l(_lock);
