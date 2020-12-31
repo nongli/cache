@@ -299,7 +299,7 @@ private:
       return std::nullopt;
     }
     LRULink<K, V>* remove = _access_list.remove_tail();
-    std::string key = remove->key;
+    K key = remove->key;
     evicted_size = _sizer(remove->value.get());
     _current_size -= evicted_size;
     int64_t removed UNUSED = _access_map.erase(remove->key);
