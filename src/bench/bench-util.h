@@ -53,10 +53,13 @@ inline int64_t ParseMemSpec(const std::string& mem_spec_str) {
   return bytes;
 }
 
-template <class Cache>
+template <class Key, class Cache>
 inline void Run(TablePrinter* results, int64_t n, const std::string& name,
-                Trace* trace, Cache* cache, CacheType type, int iters) {
-  std::string label = cache->label(n);
+                Trace* trace, Cache* cache, CacheType type, int iters,
+                std::string label = "") {
+  if (label.empty()) {
+    label = cache->label(n);
+  }
   std::cerr << "Testing adaptive cache (" << label << ") on trace " << name << std::endl;
 
   cache->clear();
@@ -72,13 +75,13 @@ inline void Run(TablePrinter* results, int64_t n, const std::string& name,
       if (r == nullptr) {
         break;
       }
-      std::shared_ptr<int64_t> val = cache->get(r->key);
+      std::shared_ptr<int64_t> val = cache->get(r->get_key<Key>());
       ++total_vals;
       if (total_vals % 2500000 == 0) {
         std::cerr << "   ...tested " << total_vals << " values" << std::endl;
       }
       if (!val) {
-        cache->add_to_cache(r->key, std::make_shared<int64_t>(r->value));
+        cache->add_to_cache(r->get_key<Key>(), std::make_shared<int64_t>(r->value));
       }
     }
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();

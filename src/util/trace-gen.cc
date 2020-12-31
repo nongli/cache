@@ -49,19 +49,22 @@ int64_t Zipfian::Gen() {
 }
 
 vector<Request> TraceGen::SameKeyTrace(int64_t n, string_view k,
-                                       int64_t v) {
+                                       int64_t v, MemoryPool* pool) {
   vector<Request> result;
   for (int i = 0; i < n; ++i) {
-    result.push_back(Request(k, v));
+    char* ext = pool == nullptr ? nullptr : pool->allocate_and_copy(k);
+    result.push_back(Request(k, v, ext));
   }
   return result;
 }
 
-vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, int64_t v) {
+vector<Request> TraceGen::CycleTrace(int64_t n, int64_t k, int64_t v,
+                                     MemoryPool* pool) {
   vector<Request> result;
   for (int64_t i = 0; i < n; ++i) {
-    int64_t key = i % k;
-    result.push_back(Request(std::to_string(key), v));
+    string key(std::to_string(i % k));
+    char* ext = pool == nullptr ? nullptr : pool->allocate_and_copy(key);
+    result.push_back(Request(key, v, ext));
   }
   return result;
 }
@@ -90,34 +93,41 @@ void InterleavdTrace::Reset() {
 }
 
 template <class Distribution>
-vector<Request> Gen(int64_t n, Distribution& d, int64_t v) {
+vector<Request> Gen(int64_t n, Distribution& d, int64_t v, MemoryPool* pool) {
   vector<Request> result;
   random_device rd{};
   mt19937 gen{rd()};
   for (int64_t i = 0; i < n; ++i) {
-    result.push_back(Request(std::to_string(std::round(d(gen))), v));
+    string key = std::to_string(std::round(d(gen)));
+    char* ext = pool == nullptr ? nullptr : pool->allocate_and_copy(key);
+    result.push_back(Request(key, v, ext));
   }
   return result;
 }
 
 vector<Request> TraceGen::NormalDistribution(int64_t n, double mean,
-                                             double stddev, int64_t v) {
+                                             double stddev, int64_t v,
+                                             MemoryPool* pool) {
   normal_distribution<> d{mean, stddev};
-  return Gen(n, d, v);
+  return Gen(n, d, v, pool);
 }
 
 vector<Request> TraceGen::PoissonDistribution(int64_t n, double mean,
-                                              int64_t v) {
+                                              int64_t v,
+                                              MemoryPool* pool) {
   poisson_distribution<> d{mean};
-  return Gen(n, d, v);
+  return Gen(n, d, v, pool);
 }
 
 vector<Request> TraceGen::ZipfianDistribution(int64_t n, int64_t k,
-                                              double alpha, int64_t v) {
+                                              double alpha, int64_t v,
+                                              MemoryPool* pool) {
   Zipfian zipf(k, alpha);
   vector<Request> result;
   for (int64_t i = 0; i < n; ++i) {
-    result.push_back(Request(std::to_string(zipf.Gen()), v));
+    string key = std::to_string(zipf.Gen());
+    char* ext = pool == nullptr ? nullptr : pool->allocate_and_copy(key);
+    result.push_back(Request(key, v, ext));
   }
 #ifdef PRINT_TRACE
   for (const auto& req : result) {
@@ -129,9 +139,10 @@ vector<Request> TraceGen::ZipfianDistribution(int64_t n, int64_t k,
 
 vector<Request> TraceGen::ZipfianDistribution(uint32_t seed, int64_t n,
                                               int64_t k, double alpha,
-                                              int64_t v) {
+                                              int64_t v,
+                                              MemoryPool* pool) {
   srand(seed);
-  return TraceGen::ZipfianDistribution(n, k, alpha, v);
+  return TraceGen::ZipfianDistribution(n, k, alpha, v, pool);
 }
 
 void FixedTrace::Add(const vector<Request>& trace) {

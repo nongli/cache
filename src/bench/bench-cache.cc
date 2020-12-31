@@ -93,23 +93,23 @@ vector<TieredArc*> tiered_caches;
 void Test(TablePrinter* results, int64_t n, int iters) {
   for (auto trace : traces) {
     for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
-      Run(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
+      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
     }
     for (LRUCache<string, int64_t, NopLock, TraceSizer>* cache : lrus) {
-      Run(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
+      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
     }
     for (FlexARC<string, int64_t, NopLock, TraceSizer>* cache : farcs) {
-      Run(results, n, trace.first, trace.second, cache, CacheType::Farc,
-           iters);
+      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Farc,
+                  iters);
     }
     for (TieredArc* cache : tiered_caches) {
-      Run(results, n, trace.first, trace.second, cache, CacheType::Tiered,
-           iters);
+      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Tiered,
+                  iters);
     }
     if (FLAGS_include_belady) {
       BeladyCache<string, int64_t> cache(n * .25, trace.second);
-      Run(results, n, trace.first, trace.second, &cache, CacheType::Belady,
-           iters);
+      Run<string>(results, n, trace.first, trace.second, &cache, CacheType::Belady,
+                  iters);
     }
 
     results->AddEmptyRow();
@@ -194,6 +194,7 @@ int main(int argc, char** argv) {
     TraceReader* reader = new TraceReader(FLAGS_trace, FLAGS_trace_limits);
     AddTrace(FLAGS_trace, reader);
   }
+
   //
   // Configure caches
   //
