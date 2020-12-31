@@ -12,32 +12,39 @@
 
 /**
 
-$ exe/key-perf --iters 10
 trace            cache          hits  misses  evicts     p  max_p  hit %  LRU %  LFU %  miss %  LRU Ghost %  LFU Ghost %  filters   micros/val
 ----------------------------------------------------------------------------------------------------------------------------------------------
-med-seq-cycle    std::string  200000  200000  150000     0      0     50     25     75      50            0            0        -     0.480393
-med-seq-cycle    external     200000  200000  150000     0      0     50     25     75      50            0            0        -     0.321110
+med-seq-cycle    std::string  200000  200000  150000     0      0     50     25     75      50            0            0        -     0.346540
+med-seq-cycle    external     200000  200000  150000     0      0     50     25     75      50            0            0        -     0.212600
+med-seq-cycle    ref-count    200000  200000  150000     0      0     50     25     75      50            0            0        -     0.271085
 
-seq-cycle-10%    std::string  180000   20000       0     0      0     90     11     88      10            0            0        -     0.143300
-seq-cycle-10%    external     180000   20000       0     0      0     90     11     88      10            0            0        -     0.090535
+seq-cycle-10%    std::string  180000   20000       0     0      0     90     11     88      10            0            0        -     0.126800
+seq-cycle-10%    external     180000   20000       0     0      0     90     11     88      10            0            0        -     0.077420
+seq-cycle-10%    ref-count    180000   20000       0     0      0     90     11     88      10            0            0        -     0.086190
 
-seq-cycle-50%    std::string      10  199990  149990  5000   5000      0    100      0      99            0           37        -     1.141740
-seq-cycle-50%    external         10  199990  149990  5000   5000      0    100      0      99            0           37        -     0.619650
+seq-cycle-50%    std::string      10  199990  149990  5000   5000      0    100      0      99            0           37        -     0.604600
+seq-cycle-50%    external         10  199990  149990  5000   5000      0    100      0      99            0           37        -     0.367880
+seq-cycle-50%    ref-count        10  199990  149990  5000   5000      0    100      0      99            0           37        -     0.507655
 
-seq-unique       std::string       0  200000  150000     0      0      0      -      -     100            0            0        -     0.870960
-seq-unique       external          0  200000  150000     0      0      0      -      -     100            0            0        -     0.676240
+seq-unique       std::string       0  200000  150000     0      0      0      -      -     100            0            0        -     0.613145
+seq-unique       external          0  200000  150000     0      0      0      -      -     100            0            0        -     0.360590
+seq-unique       ref-count         0  200000  150000     0      0      0      -      -     100            0            0        -     0.504265
 
-tiny-seq-cycle   std::string  200000  200000  150000     0      0     50      1     99      50            0            0        -     0.448452
-tiny-seq-cycle   external     200000  200000  150000     0      0     50      1     99      50            0            0        -     0.325518
+tiny-seq-cycle   std::string  200000  200000  150000     0      0     50      1     99      50            0            0        -     0.347293
+tiny-seq-cycle   external     200000  200000  150000     0      0     50      1     99      50            0            0        -     0.214822
+tiny-seq-cycle   ref-count    200000  200000  150000     0      0     50      1     99      50            0            0        -     0.277520
 
-zipf-.7          std::string   95170  104830   54830  1021   1021     47     26     73      52            0            9        -     0.542935
-zipf-.7          external      95170  104830   54830  1021   1021     47     26     73      52            0            9        -     0.439885
+zipf-.7          std::string   94660  105340   55340  1047   1047     47     26     73      52            0            9        -     0.350630
+zipf-.7          external      94660  105340   55340  1047   1047     47     26     73      52            0            9        -     0.257915
+zipf-.7          ref-count     94660  105340   55340  1047   1047     47     26     73      52            0            9        -     0.290900
 
-zipf-1           std::string  146180   53820    3820    10     10     73     12     87      26            0            0        -     0.243740
-zipf-1           external     146180   53820    3820    10     10     73     12     87      26            0            0        -     0.210915
+zipf-1           std::string  146650   53350    3350     7      7     73     12     87      26            0            0        -     0.186535
+zipf-1           external     146650   53350    3350     7      7     73     12     87      26            0            0        -     0.144245
+zipf-1           ref-count    146650   53350    3350     7      7     73     12     87      26            0            0        -     0.147315
 
-zipf-seq         std::string  240590  359410  309410     7   1214     40     11     88      59            0           16        -     0.609812
-zipf-seq         external     240590  359410  309410     7   1214     40     11     88      59            0           16        -     0.523703
+zipf-seq         std::string  241120  358880  308880    18   1269     40     10     89      59            0           16        -     0.450433
+zipf-seq         external     241120  358880  308880    18   1269     40     10     89      59            0           16        -     0.324565
+zipf-seq         ref-count    241120  358880  308880    18   1269     40     10     89      59            0           16        -     0.377113
 
 **/
 
@@ -62,6 +69,11 @@ void Test(TablePrinter* results, int64_t n, int iters) {
     AdaptiveCache<TestKey, int64_t, NopLock, TraceSizer> kcache(n * .25);
     Run<TestKey>(results, n, trace.first, trace.second, &kcache, CacheType::Arc, iters,
                  "external");
+
+    AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer> ref_cache(n * .25);
+    Run<RefCountKey>(results, n, trace.first, trace.second, &ref_cache, CacheType::Arc,
+                     iters, "ref-count");
+
     results->AddEmptyRow();
   }
 }

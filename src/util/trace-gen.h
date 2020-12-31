@@ -7,6 +7,8 @@
 #include <string_view>
 #include <vector>
 
+#include "cache/cache.h"
+
 namespace cache {
 
 // Implementation of generic hash.
@@ -42,13 +44,16 @@ struct Request {
   std::string key;
   int64_t value;
   TestKey test_key;
+  RefCountKey ref_key;
 
   template<typename K>
   const K& get_key() const;
 
   Request() = default;
   Request(std::string_view k, int64_t v, const char* ext_ptr)
-    : key(k), value(v), test_key(ext_ptr, ext_ptr == nullptr ? 0 : k.size()) {
+    : key(k), value(v),
+      test_key(ext_ptr, ext_ptr == nullptr ? 0 : k.size()),
+      ref_key(k) {
   }
 };
 
@@ -211,6 +216,10 @@ template <> inline const std::string& Request::get_key<std::string>() const {
 
 template <> inline const TestKey& Request::get_key<TestKey>() const {
   return test_key;
+}
+
+template <> inline const RefCountKey& Request::get_key<RefCountKey>() const {
+  return ref_key;
 }
 
 } // namespace cache
