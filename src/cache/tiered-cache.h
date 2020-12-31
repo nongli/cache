@@ -9,6 +9,7 @@
 #include <cassert>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include "cache/cache.h"
 

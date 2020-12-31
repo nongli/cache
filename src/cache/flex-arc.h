@@ -19,10 +19,10 @@ class FlexARC : public Cache<K, V> {
 public:
   // Produces an ARC with ghost lists of size ghost_size, and cache of size
   // size.
-  FlexARC(int64_t size, int64_t ghost_size)
+  FlexARC(int64_t size, int64_t ghost_size, int64_t filter_size = 0)
       : _max_size{size}, _p{0}, _max_p{0}, _ghost_size{ghost_size},
         _lru_cache{size}, _lfu_cache{size}, _lru_ghost{ghost_size},
-        _lfu_ghost{ghost_size} {}
+        _lfu_ghost{ghost_size}, _filter(filter_size) {}
 
   inline int64_t max_size() const { return _max_size; }
   inline int64_t size() const { return _lru_cache.size() + _lfu_cache.size(); }
@@ -33,7 +33,8 @@ public:
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return _p; }
   inline int64_t max_p() const { return _max_p; }
-  inline int64_t filter_size() const { return 0; }
+  inline int64_t filter_size() const { return _filter.max_size(); }
+  inline Lock* get_lock() { return &_lock; }
 
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
@@ -50,13 +51,31 @@ public:
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       // Now we might need to make space.
       replace(false);
+      return;
     } else if (_lfu_cache.contains(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       // Now we might need to make space.
       replace(true);
-    } else if (_lru_ghost.contains(key)) {
+      return;
+    }
+
+    bool lru_ghost_hit = _lru_ghost.contains(key);
+    bool lfu_ghost_hit = _lfu_ghost.contains(key);
+
+    // Filter should only kick in for entries evicted far enough in the past.
+    if (!(lfu_ghost_hit || lru_ghost_hit) && _filter.max_size() > 0) {
+      // Add a "double-hit" pre filter. This is intended to prevent single scan
+      // keys from invalidating the cache.
+      if (!_filter.contains(key)) {
+        ++_stats.arc_filter;
+        _filter.add_to_cache(key, nullptr);
+        return;
+      }
+    }
+
+    if (lru_ghost_hit) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
@@ -66,7 +85,7 @@ public:
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       // Do this only after fixing all invariants, to evict.
       replace(false);
-    } else if (_lfu_ghost.contains(key)) {
+    } else if (lfu_ghost_hit) {
       // Case III
       adapt_lfu_ghost_hit();
       // Add things
@@ -173,6 +192,7 @@ public:
     _lfu_cache.clear();
     _lru_ghost.clear();
     _lfu_ghost.clear();
+    _filter.clear();
     _p = 0;
   }
 
@@ -258,6 +278,7 @@ private:
   LRUCache<K, V, NopLock, Sizer> _lfu_cache;
   LRUCache<K, V, NopLock> _lru_ghost;
   LRUCache<K, V, NopLock> _lfu_ghost;
+  LRUCache<K, V, NopLock> _filter;
   Stats _stats;
 };
 } // namespace cache

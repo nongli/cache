@@ -59,6 +59,7 @@ public:
       assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
       return;
     }
+
     bool lru_ghost_hit = _lru_ghost.contains(key);
     bool lfu_ghost_hit = _lfu_ghost.contains(key);
 
