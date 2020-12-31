@@ -38,13 +38,18 @@ public:
 
   const std::string label(int64_t n) const {
     return "farc-" + std::to_string(max_size() * 100 / n) + "-" +
-        std::to_string( ghost_size() * 100 / max_size());
+           std::to_string(ghost_size() * 100 / max_size());
   }
 
   // Add an item to the cache. The difference here is we try to use existing
   // information to decide if the item was previously cached.
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
     std::lock_guard<Lock> l(_lock);
+    bool lru_ghost_hit = _lru_ghost.contains(key);
+    bool lfu_ghost_hit = _lfu_ghost.contains(key);
+    bool in_lfu = false;
+    bool should_replace = true;
+
     // Check if the key is already in LRU cache.
     // We do so by removing the item since well that is what we would do
     // eventually anyways.
@@ -54,33 +59,23 @@ public:
       _lru_cache.remove_from_cache(key);
       _lfu_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
-      // Now we might need to make space.
-      replace(false);
-      return;
+      in_lfu = false;
     } else if (_lfu_cache.contains(key)) {
       // Just update the item, and don't worry about it.
       _lfu_cache.add_to_cache_no_evict(key, value);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       // Now we might need to make space.
-      replace(true);
-      return;
-    }
-
-    bool lru_ghost_hit = _lru_ghost.contains(key);
-    bool lfu_ghost_hit = _lfu_ghost.contains(key);
-
-    // Filter should only kick in for entries evicted far enough in the past.
-    if (!(lfu_ghost_hit || lru_ghost_hit) && _filter.max_size() > 0) {
+      in_lfu = true;
+    } else if (!(lfu_ghost_hit || lru_ghost_hit) && _filter.max_size() > 0 &&
+               !_filter.contains(key)) {
+      // Filter should only kick in for entries evicted far enough in the past.
       // Add a "double-hit" pre filter. This is intended to prevent single scan
       // keys from invalidating the cache.
-      if (!_filter.contains(key)) {
-        ++_stats.arc_filter;
-        _filter.add_to_cache(key, nullptr);
-        return;
-      }
-    }
-
-    if (lru_ghost_hit) {
+      ++_stats.arc_filter;
+      _filter.add_to_cache(key, nullptr);
+      // Do not call replace in this case
+      should_replace = false;
+    } else if (lru_ghost_hit) {
       // We used to have this key, we recently evicted it, let us make this
       // a frequent key. Case II in Figure 4.
       adapt_lru_ghost_hit();
@@ -89,7 +84,7 @@ public:
       _lru_ghost.remove_from_cache(key);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
       // Do this only after fixing all invariants, to evict.
-      replace(false);
+      in_lfu = false;
     } else if (lfu_ghost_hit) {
       // Case III
       adapt_lfu_ghost_hit();
@@ -97,30 +92,16 @@ public:
       _lfu_cache.add_to_cache_no_evict(key, value);
       _lfu_ghost.remove_from_cache(key);
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
-      // Make space
-      replace(true);
+      in_lfu = true;
     } else {
       // Case IV
       assert(!_lru_ghost.contains(key) && !_lfu_ghost.contains(key));
-      bool lru_only = _lru_cache.size() == _max_size;
       _lru_cache.add_to_cache_no_evict(key, value);
-      if (lru_only) {
-        while (_lru_cache.size() > _max_size) {
-          size_t bytes_evicted = 0;
-          // We need to evict something, so...
-          std::optional<K> evicted = _lru_cache.evict_entry(bytes_evicted);
-          if (evicted) {
-            _lru_ghost.add_to_cache(*evicted, nullptr);
-            assert(!_lfu_ghost.contains(*evicted) &&
-                   !_lru_cache.contains(*evicted));
-            ++_stats.lru_evicts;
-            ++_stats.num_evicted;
-            _stats.bytes_evicted += bytes_evicted;
-          }
-        }
-      } else {
-        replace(false);
-      }
+      in_lfu = false;
+    }
+    // The call to replace restores the size invariant.
+    if (should_replace) {
+      replace(in_lfu);
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
   }
