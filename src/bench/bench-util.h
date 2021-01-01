@@ -91,6 +91,7 @@ inline void Run(TablePrinter* results, int64_t n, const std::string& name,
   std::cerr << "    Completed in  " << total_micros / 1000 << " ms" << std::endl;
 
   Stats stats = cache->stats();
+  int64_t total = std::max(stats.num_hits + stats.num_misses, (int64_t)1);
   std::vector<std::string> row;
   row.push_back(name);
   row.push_back(label);
@@ -104,8 +105,7 @@ inline void Run(TablePrinter* results, int64_t n, const std::string& name,
     row.push_back(std::to_string(cache->p()));
     row.push_back(std::to_string(cache->max_p()));
   }
-  row.push_back(
-      std::to_string(stats.num_hits * 100 / (stats.num_hits + stats.num_misses)));
+  row.push_back(std::to_string(stats.num_hits * 100 / total));
   if (type == CacheType::Lru) {
     row.push_back("-");
     row.push_back("-");
@@ -118,8 +118,7 @@ inline void Run(TablePrinter* results, int64_t n, const std::string& name,
       row.push_back("-");
     }
   }
-  row.push_back(
-      std::to_string(stats.num_misses * 100 / (stats.num_hits + stats.num_misses)));
+  row.push_back(std::to_string(stats.num_misses * 100 / total));
   if (type == CacheType::Lru) {
     row.push_back("-");
     row.push_back("-");

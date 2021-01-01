@@ -58,8 +58,6 @@ public:
 
   int64_t size() const { return _length; }
 
-  // FIXME: Worry about concurrency
-
   // Insert entry into head.
   inline void insert_head(LRULink<K, V>* entry) {
     entry->next = _head;
