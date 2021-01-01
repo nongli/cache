@@ -12,57 +12,55 @@
 #include <map>
 
 /**
-
-root@7e9695457159:/cache/build/release# exe/bench-cache --include_belady
 trace            cache            hits  misses  evicts     p  max_p  hit %  LRU %  LFU %  miss %  LRU Ghost %  LFU Ghost %  filters   micros/val
 ------------------------------------------------------------------------------------------------------------------------------------------------
-med-seq-cycle    arc-25         100000  100000   75000     0      0     50     25     75      50            0            0        -     0.316085
-med-seq-cycle    arc-25-filter   75000  125000       0     0      0     37     33     66      62            0            0   100000     0.304790
-med-seq-cycle    lru-25         100000  100000   75000     -      -     50      -      -      50            -            -        -     0.149010
-med-seq-cycle    farc-25-400    100000  100000   75000     0      0     50     25     75      50            0            0        -     0.300020
-med-seq-cycle    belady-25      100000  100000   75000     0      0     50      0      0      50            0            0        -     0.360075
+med-seq-cycle    arc-25         100000  100000   75000     0      0     50     25     75      50            0            0        -     6.523735
+med-seq-cycle    arc-25-filter   75000  125000       0     0      0     37     33     66      62            0            0   100000     5.672360
+med-seq-cycle    lru-25         100000  100000   75000     -      -     50      -      -      50            -            -        -     2.965375
+med-seq-cycle    farc-25-400    100000  100000   75000     0      0     50     25     75      50            0            0        -     6.581680
+med-seq-cycle    belady-25      100000  100000   75000     0      0     50      0      0      50            0            0        -    11.251495
 
-seq-cycle-10%    arc-25          90000   10000       0     0      0     90     11     88      10            0            0        -     0.097650
-seq-cycle-10%    arc-25-filter   80000   20000       0     0      0     80     12     87      20            0            0    10000     0.126270
-seq-cycle-10%    lru-25          90000   10000       0     -      -     90      -      -      10            -            -        -     0.049190
-seq-cycle-10%    farc-25-400     90000   10000       0     0      0     90     11     88      10            0            0        -     0.098940
-seq-cycle-10%    belady-25       90000   10000       0     0      0     90      0      0      10            0            0        -     0.253060
+seq-cycle-10%    arc-25          90000   10000       0     0      0     90     11     88      10            0            0        -     2.403560
+seq-cycle-10%    arc-25-filter   80000   20000       0     0      0     80     12     87      20            0            0    10000     3.042640
+seq-cycle-10%    lru-25          90000   10000       0     -      -     90      -      -      10            -            -        -     1.104980
+seq-cycle-10%    farc-25-400     90000   10000       0     0      0     90     11     88      10            0            0        -     2.415050
+seq-cycle-10%    belady-25       90000   10000       0     0      0     90      0      0      10            0            0        -     9.577990
 
-seq-cycle-50%    arc-25              5   99995   74995  5000   5000      0    100      0      99            0           37        -     0.589000
-seq-cycle-50%    arc-25-filter       0  100000   25000     0      0      0      -      -     100            0            0    50000     0.431300
-seq-cycle-50%    lru-25              0  100000   75000     -      -      0      -      -     100            -            -        -     0.250990
-seq-cycle-50%    farc-25-400     12500   87500   62500  5000   5000     12    100      0      87            0           42        -     0.487220
-seq-cycle-50%    belady-25       25000   75000   50000     0      0     25      0      0      75            0            0        -     0.366350
+seq-cycle-50%    arc-25              5   99995   74995  5000   5000      0    100      0      99            0           37        -    13.821530
+seq-cycle-50%    arc-25-filter       0  100000   25000     0      0      0      -      -     100            0            0    50000     8.508730
+seq-cycle-50%    lru-25              0  100000   75000     -      -      0      -      -     100            -            -        -     5.231290
+seq-cycle-50%    farc-25-400     12500   87500   62500  5000   5000     12    100      0      87            0           42        -    11.426210
+seq-cycle-50%    belady-25       25000   75000   50000     0      0     25      0      0      75            0            0        -    13.648390
 
-seq-unique       arc-25              0  100000   75000     0   5000      0      -      -     100            0            0        -     0.605440
-seq-unique       arc-25-filter       0  100000       0     0      0      0      -      -     100            0            0   100000     0.359190
-seq-unique       lru-25              0  100000   75000     -      -      0      -      -     100            -            -        -     0.251490
-seq-unique       farc-25-400         0  100000   75000     0   5000      0      -      -     100            0            0        -     0.550580
-seq-unique       belady-25           0  100000   75000     0      0      0      -      -     100            0            0        -     0.402990
+seq-unique       arc-25              0  100000   75000     0   5000      0      -      -     100            0            0        -    11.743250
+seq-unique       arc-25-filter       0  100000       0     0      0      0      -      -     100            0            0   100000     8.562110
+seq-unique       lru-25              0  100000   75000     -      -      0      -      -     100            -            -        -     5.541010
+seq-unique       farc-25-400         0  100000   75000     0   5000      0      -      -     100            0            0        -    11.622990
+seq-unique       belady-25           0  100000   75000     0      0      0      -      -     100            0            0        -    13.969930
 
-tiny-seq-cycle   arc-25         100000  100000   75000     0   5000     50      1     99      50            0            0        -     0.287485
-tiny-seq-cycle   arc-25-filter   99000  101000       0     0      0     49      1     98      50            0            0   100000     0.211110
-tiny-seq-cycle   lru-25         100000  100000   75000     -      -     50      -      -      50            -            -        -     0.145220
-tiny-seq-cycle   farc-25-400    100000  100000   75000     0   5000     50      1     99      50            0            0        -     0.307500
-tiny-seq-cycle   belady-25      100000  100000   75000     0      0     50      0      0      50            0            0        -     0.295940
+tiny-seq-cycle   arc-25         100000  100000   75000     0   5000     50      1     99      50            0            0        -     6.786510
+tiny-seq-cycle   arc-25-filter   99000  101000       0     0      0     49      1     98      50            0            0   100000     4.817630
+tiny-seq-cycle   lru-25         100000  100000   75000     -      -     50      -      -      50            -            -        -     3.104205
+tiny-seq-cycle   farc-25-400    100000  100000   75000     0   5000     50      1     99      50            0            0        -     6.698125
+tiny-seq-cycle   belady-25      100000  100000   75000     0      0     50      0      0      50            0            0        -    11.099885
 
-zipf-.7          arc-25          47330   52670   27670  1047   5000     47     26     73      52            0            9        -     0.338940
-zipf-.7          arc-25-filter   34995   65005       0     0      0     34     22     77      65            0            0    46940     0.278350
-zipf-.7          lru-25          46755   53245   28245     -      -     46      -      -      53            -            -        -     0.160760
-zipf-.7          farc-25-400     47330   52670   27670  1146   5000     47     26     73      52            0           10        -     0.326430
-zipf-.7          belady-25       53060   46940   21940     0      0     53      0      0      46            0            0        -     0.439430
+zipf-.7          arc-25          47585   52415   27415  1021   5000     47     26     73      52            0            9        -     7.002220
+zipf-.7          arc-25-filter   34860   65140       0     0      0     34     22     77      65            0            0    46890     5.714830
+zipf-.7          lru-25          46920   53080   28080     -      -     46      -      -      53            -            -        -     3.175500
+zipf-.7          farc-25-400     47585   52415   27415  1105   5000     47     26     73      52            0           10        -     7.374030
+zipf-.7          belady-25       53110   46890   21890     0      0     53      0      0      46            0            0        -    11.806040
 
-zipf-1           arc-25          73325   26675    1675     7   5000     73     12     87      26            0            0        -     0.161370
-zipf-1           arc-25-filter   64425   35575       0     0      0     64      7     92      35            0            0    26640     0.167040
-zipf-1           lru-25          73325   26675    1675     -      -     73      -      -      26            -            -        -     0.095180
-zipf-1           farc-25-400     73325   26675    1675     7   5000     73     12     87      26            0            0        -     0.162440
-zipf-1           belady-25       73360   26640    1640     0      0     73      0      0      26            0            0        -     0.344810
+zipf-1           arc-25          73090   26910    1910    10   5000     73     12     87      26            0            0        -     3.677880
+zipf-1           arc-25-filter   63665   36335       0     0      0     63      7     92      36            0            0    26860     4.266540
+zipf-1           lru-25          73085   26915    1915     -      -     73      -      -      26            -            -        -     1.822160
+zipf-1           farc-25-400     73090   26910    1910    10   5000     73     12     87      26            0            0        -     3.962240
+zipf-1           belady-25       73140   26860    1860     0      0     73      0      0      26            0            0        -     9.806900
 
-zipf-seq         arc-25         120560  179440  154440    18   5000     40     10     89      59            0           16        -     0.439803
-zipf-seq         arc-25-filter  115620  184380   42345    66   1156     38     11     88      61            0           12   117035     0.379547
-zipf-seq         lru-25         104200  195800  170800     -      -     34      -      -      65            -            -        -     0.203370
-zipf-seq         farc-25-400    112460  187540  162540     0   5000     37     11     88      62            0           46        -     0.477113
-zipf-seq         belady-25      156110  143890  118890     0      0     52      0      0      47            0            0        -     0.480910
+zipf-seq         arc-25         120295  179705  154705     7   5000     40     11     88      59            0           16        -     8.782640
+zipf-seq         arc-25-filter  116030  183970   42150    86   1128     38     11     88      61            0           12   116820     7.163550
+zipf-seq         lru-25         104480  195520  170520     -      -     34      -      -      65            -            -        -     4.152330
+zipf-seq         farc-25-400    112835  187165  162165     0   5000     37     11     88      62            0           46        -    10.107987
+zipf-seq         belady-25      156210  143790  118790     0      0     52      0      0      47            0            0        -    13.682527
 
 **/
 
@@ -80,33 +78,33 @@ DEFINE_int64(trace_limits, 0, "How much of the trace to use. 0 means run all");
 using namespace std;
 using namespace cache;
 
-typedef TieredCache<string, int64_t,
-                    AdaptiveCache<string, int64_t, NopLock, TraceSizer>>
+typedef TieredCache<RefCountKey, int64_t,
+                    AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>>
     TieredArc;
 
 map<string, Trace*> traces;
-vector<AdaptiveCache<string, int64_t, NopLock, TraceSizer>*> arcs;
-vector<LRUCache<string, int64_t, NopLock, TraceSizer>*> lrus;
-vector<FlexARC<string, int64_t, NopLock, TraceSizer>*> farcs;
+vector<AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>*> arcs;
+vector<LRUCache<RefCountKey, int64_t, NopLock, TraceSizer>*> lrus;
+vector<FlexARC<RefCountKey, int64_t, NopLock, TraceSizer>*> farcs;
 vector<TieredArc*> tiered_caches;
 
 void Test(TablePrinter* results, int64_t base_size, int iters) {
   for (auto trace : traces) {
-    for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
-      Run<string>(results, base_size, trace.first, trace.second, cache,
-                  CacheType::Arc, iters);
+    for (AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>* cache : arcs) {
+      Run<RefCountKey>(results, base_size, trace.first, trace.second, cache,
+                       CacheType::Arc, iters);
     }
-    for (LRUCache<string, int64_t, NopLock, TraceSizer>* cache : lrus) {
-      Run<string>(results, base_size, trace.first, trace.second, cache,
-                  CacheType::Lru, iters);
+    for (LRUCache<RefCountKey, int64_t, NopLock, TraceSizer>* cache : lrus) {
+      Run<RefCountKey>(results, base_size, trace.first, trace.second, cache,
+                       CacheType::Lru, iters);
     }
-    for (FlexARC<string, int64_t, NopLock, TraceSizer>* cache : farcs) {
-      Run<string>(results, base_size, trace.first, trace.second, cache,
-                  CacheType::Farc, iters);
+    for (FlexARC<RefCountKey, int64_t, NopLock, TraceSizer>* cache : farcs) {
+      Run<RefCountKey>(results, base_size, trace.first, trace.second, cache,
+                       CacheType::Farc, iters);
     }
     for (TieredArc* cache : tiered_caches) {
-      Run<string>(results, base_size, trace.first, trace.second, cache,
-                  CacheType::Tiered, iters);
+      Run<RefCountKey>(results, base_size, trace.first, trace.second, cache,
+                       CacheType::Tiered, iters);
     }
     if (FLAGS_include_belady) {
       BeladyCache<string, int64_t> cache(base_size * .25, trace.second);
@@ -201,26 +199,26 @@ int main(int argc, char** argv) {
   // Configure caches
   //
   if (FLAGS_minimal) {
-    arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+    arcs.push_back(new AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>(
         base_size * .25));
-    arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+    arcs.push_back(new AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>(
         base_size * .25, base_size * .5));
-    farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
+    farcs.push_back(new FlexARC<RefCountKey, int64_t, NopLock, TraceSizer>(
         base_size * .25, base_size));
     lrus.push_back(
-        new LRUCache<string, int64_t, NopLock, TraceSizer>(base_size * .25));
+        new LRUCache<RefCountKey, int64_t, NopLock, TraceSizer>(base_size * .25));
   } else {
     const vector<double> cache_sizes{.05, .1, .5, 1.0};
     const vector<double> ghost_sizes{.5, 1.0, 2.0, 3.0};
     for (double sz : cache_sizes) {
-      arcs.push_back(new AdaptiveCache<string, int64_t, NopLock, TraceSizer>(
+      arcs.push_back(new AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>(
           base_size * sz));
       if (FLAGS_include_lru) {
         lrus.push_back(
-            new LRUCache<string, int64_t, NopLock, TraceSizer>(base_size * sz));
+            new LRUCache<RefCountKey, int64_t, NopLock, TraceSizer>(base_size * sz));
       }
       for (double gs : ghost_sizes) {
-        farcs.push_back(new FlexARC<string, int64_t, NopLock, TraceSizer>(
+        farcs.push_back(new FlexARC<RefCountKey, int64_t, NopLock, TraceSizer>(
             base_size * sz, base_size * sz * gs));
       }
     }
@@ -229,7 +227,7 @@ int main(int argc, char** argv) {
   if (FLAGS_include_tiered) {
     TieredArc* tiered = new TieredArc();
     tiered->add_cache(
-        10, make_shared<AdaptiveCache<string, int64_t, NopLock, TraceSizer>>(
+        10, make_shared<AdaptiveCache<RefCountKey, int64_t, NopLock, TraceSizer>>(
                 base_size * .25));
     tiered_caches.push_back(tiered);
   }
