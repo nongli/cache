@@ -90,26 +90,28 @@ vector<LRUCache<string, int64_t, NopLock, TraceSizer>*> lrus;
 vector<FlexARC<string, int64_t, NopLock, TraceSizer>*> farcs;
 vector<TieredArc*> tiered_caches;
 
-void Test(TablePrinter* results, int64_t n, int iters) {
+void Test(TablePrinter* results, int64_t base_size, int iters) {
   for (auto trace : traces) {
     for (AdaptiveCache<string, int64_t, NopLock, TraceSizer>* cache : arcs) {
-      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Arc, iters);
+      Run<string>(results, base_size, trace.first, trace.second, cache,
+                  CacheType::Arc, iters);
     }
     for (LRUCache<string, int64_t, NopLock, TraceSizer>* cache : lrus) {
-      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Lru, iters);
+      Run<string>(results, base_size, trace.first, trace.second, cache,
+                  CacheType::Lru, iters);
     }
     for (FlexARC<string, int64_t, NopLock, TraceSizer>* cache : farcs) {
-      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Farc,
-                  iters);
+      Run<string>(results, base_size, trace.first, trace.second, cache,
+                  CacheType::Farc, iters);
     }
     for (TieredArc* cache : tiered_caches) {
-      Run<string>(results, n, trace.first, trace.second, cache, CacheType::Tiered,
-                  iters);
+      Run<string>(results, base_size, trace.first, trace.second, cache,
+                  CacheType::Tiered, iters);
     }
     if (FLAGS_include_belady) {
-      BeladyCache<string, int64_t> cache(n * .25, trace.second);
-      Run<string>(results, n, trace.first, trace.second, &cache, CacheType::Belady,
-                  iters);
+      BeladyCache<string, int64_t> cache(base_size * .25, trace.second);
+      Run<string>(results, base_size, trace.first, trace.second, &cache,
+                  CacheType::Belady, iters);
     }
 
     results->AddEmptyRow();

@@ -21,17 +21,18 @@ struct Oldest {
 };
 
 // Oracle cache using belady's algorithm
-template <typename K, typename V>
+template <typename K, typename V, typename Sizer = ElementCount<V>>
 class BeladyCache : public Cache<K, V> {
 public:
   // The exact trace that will be run. This assumes that get() is called once for each
   // element in the trace.
-  BeladyCache(int64_t size, Trace* trace) : _max_size(size) {
+  BeladyCache(int64_t size, Trace* trace) : _max_size(size), _size(0) {
     create_cache_index(trace);
   }
 
   inline int64_t max_size() const { return _max_size; }
-  inline int64_t size() const { return _cache.size(); }
+  inline int64_t size() const { return _size; }
+  inline int64_t num_entries() const { return _cache.size(); }
   const Stats& stats() const { return _stats; }
   inline int64_t p() const { return 0; }
   inline int64_t max_p() const { return 0; }
@@ -69,12 +70,16 @@ public:
   }
 
   void add_to_cache(const K& key, std::shared_ptr<V> value) {
-    if (_cache.size() >= _max_size) {
+    const int64_t v_size = _sizer(value.get());
+    assert(v_size < _max_size);
+
+    while (_size >= _max_size) {
       ++_stats.num_evicted;
       evict();
     }
-    assert(_cache.size() < _max_size);
+    assert(_size < _max_size);
     _cache[key] = value;
+    _size += v_size;
 
     AccessHistory& history = _access_by_key[key];
     if (history.idx < history.access_order.size()) {
@@ -103,6 +108,7 @@ public:
     _farthest_access.clear();
     _unused.clear();
     _cache.clear();
+    _size = 0;
     for (auto& kv: _access_by_key) {
       kv.second.idx = 0;
     }
@@ -141,6 +147,7 @@ private:
         std::cout << "Evicting key=" << key
                   << " which will not be used again: " << std::endl;
       }
+      _size -= _sizer(_cache[key].get());
       _cache.erase(key);
       _unused.erase(key);
       return;
@@ -152,6 +159,7 @@ private:
       std::cout << "Evicting key=" << first->second << " which will be used at t="
                 << first->first << std::endl;
     }
+    _size -= _sizer(_cache[first->second].get());
     _cache.erase(first->second);
     _farthest_access.erase(first->first);
   }
@@ -179,8 +187,11 @@ private:
   }
 
   // Cache
-  int64_t _max_size;
+  const int64_t _max_size;
+  int64_t _size;
   std::unordered_map<K, std::shared_ptr<V>> _cache;
+
+  Sizer _sizer;
   Stats _stats;
 
   // For each key, the access history generated from the trace
