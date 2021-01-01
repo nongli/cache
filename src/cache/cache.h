@@ -167,6 +167,7 @@ public:
     return _key == other._key || memcmp(_key, other._key, _len) == 0;
   }
 
+  friend std::ostream& operator<<(std::ostream& os, const RefCountKey& k);
   uint32_t hash() const { return _hash; }
 
 private:
@@ -175,6 +176,12 @@ private:
   uint8_t* _key;
   mutable int32_t* _count;
 };
+
+inline std::ostream& operator<<(std::ostream& os, const RefCountKey& k) {
+  os << std::string(reinterpret_cast<const char*>(k._key), k._len);
+  return os;
+}
+
 
 } // namespace cache
 
