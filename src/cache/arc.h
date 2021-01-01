@@ -212,7 +212,7 @@ public:
     if (size < _max_size) {
       if (_p > size) {
         // p must be between 0 and _max_size, but what this is telling us is
-        // that we should be dedicating all of the cache space to LFU. So let us
+        // that we should be dedicating all of the cache space to LRU. So let us
         // just do that.
         // NOTE[apanda]: There is an argument to be made for proportional
         // reduction but I am not sure it makes sense, so might need to revisit.
