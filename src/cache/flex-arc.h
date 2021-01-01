@@ -132,30 +132,30 @@ public:
   // Get an item from the cache. This is one half of what the ARC paper does.
   std::shared_ptr<V> get(const K& key) {
     std::lock_guard<Lock> l(_lock);
-    std::shared_ptr<V> value(nullptr);
-    if (!_lfu_cache.contains(key)) {
-      if (_lru_cache.contains(key)) {
-        value = _lru_cache.remove_from_cache(key);
-        std::shared_ptr<V> insertable(value);
-        _lfu_cache.add_to_cache_no_evict(key, insertable);
-        ++_stats.num_hits;
-        ++_stats.lru_hits;
-      } else {
-        ++_stats.num_misses;
-        // Access ghosts.
-        bool lru_ghost = _lru_ghost.contains(key);
-        bool lfu_ghost = _lfu_ghost.contains(key);
-        _stats.lfu_ghost_hits += (int64_t)lfu_ghost;
-        _stats.lfu_ghost_hits += (int64_t)lru_ghost;
-        assert((!(lru_ghost || lfu_ghost)) || (lru_ghost ^ lfu_ghost));
-      }
-    } else {
-      value = _lfu_cache.get(key);
+    std::shared_ptr<V> lfu_value = _lfu_cache.get(key);
+    if (lfu_value) {
       ++_stats.num_hits;
       ++_stats.lfu_hits;
+      assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
+      return lfu_value;
+    }
+
+    std::shared_ptr<V> lru_value = _lru_cache.remove_from_cache(key);
+    if (lru_value) {
+      _lfu_cache.add_to_cache_no_evict(key, lru_value);
+      ++_stats.num_hits;
+      ++_stats.lru_hits;
+    } else {
+      ++_stats.num_misses;
+      // Access ghosts.
+      bool lru_ghost = _lru_ghost.contains(key);
+      bool lfu_ghost = _lfu_ghost.contains(key);
+      _stats.lfu_ghost_hits += (int64_t)lfu_ghost;
+      _stats.lfu_ghost_hits += (int64_t)lru_ghost;
+      assert((!(lru_ghost || lfu_ghost)) || (lru_ghost ^ lfu_ghost));
     }
     assert(_lfu_cache.size() + _lru_cache.size() <= _max_size);
-    return value;
+    return lru_value;
   }
 
   // Remove key from the cache.
