@@ -205,6 +205,27 @@ public:
     return value;
   }
 
+  // Set the maximum cache size.
+  void set_max_size(int64_t size) {
+    std::lock_guard<Lock> l(_lock);
+    debug_trace("remove_from_cache");
+    if (size < _max_size) {
+      if (_p > size) {
+        // p must be between 0 and _max_size, but what this is telling us is
+        // that we should be dedicating all of the cache space to LFU. So let us
+        // just do that.
+        // NOTE[apanda]: There is an argument to be made for proportional
+        // reduction but I am not sure it makes sense, so might need to revisit.
+        _p = size;
+        _max_size = size;
+        fit(false);
+      }
+    } else {
+      _max_size = size;
+      // Do not need to adjust anything.
+    }
+  }
+
   void reset() {
     std::lock_guard<Lock> l(_lock);
     debug_trace("reset");
