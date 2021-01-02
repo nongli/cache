@@ -6,7 +6,7 @@
 #include <string>
 
 // Useful for variables only used in assertions.
-#define UNUSED __attribute__((unused))
+#define VARIABLE_UNUSED __attribute__((unused))
 
 namespace cache {
 
@@ -123,7 +123,7 @@ public:
   RefCountKey() : _hash(0), _len(0), _key(nullptr), _count(nullptr) {}
 
   // Creates and copies a ref counted key from a string.
-  RefCountKey(std::string_view sv) :_count(nullptr) {
+  RefCountKey(std::string_view sv) : _count(nullptr) {
     _hash = std::hash<std::string_view>{}(sv);
     _len = sv.size();
     _key = new uint8_t[_len];
@@ -131,12 +131,12 @@ public:
   }
 
   RefCountKey(uint8_t* key, int32_t len, uint32_t hash)
-    : _hash(hash), _len(len), _key(key) {}
+      : _hash(hash), _len(len), _key(key) {}
 
   RefCountKey(const RefCountKey& rhs)
-    : _hash(rhs._hash), _len(rhs._len),
-      _key(rhs._key), _count(rhs._count) {
-    if (_key == nullptr) return;
+      : _hash(rhs._hash), _len(rhs._len), _key(rhs._key), _count(rhs._count) {
+    if (_key == nullptr)
+      return;
     if (_count == nullptr) {
       _count = new int32_t(2);
       rhs._count = _count;
@@ -146,16 +146,17 @@ public:
   }
 
   RefCountKey(RefCountKey&& rhs)
-    : _hash(rhs._hash), _len(rhs._len), _key(rhs._key), _count(rhs._count) {
-    rhs._key =  nullptr;
-    rhs._count =  nullptr;
+      : _hash(rhs._hash), _len(rhs._len), _key(rhs._key), _count(rhs._count) {
+    rhs._key = nullptr;
+    rhs._count = nullptr;
     rhs._len = 0;
     rhs._hash = 0;
   }
 
   ~RefCountKey() {
     if (_count == nullptr) {
-      cleanup: delete[] _key;
+    cleanup:
+      delete[] _key;
     } else if (--*_count == 0) {
       delete _count;
       goto cleanup;
@@ -163,7 +164,8 @@ public:
   }
 
   bool operator==(const RefCountKey& other) const {
-    if (_len != other._len) return false;
+    if (_len != other._len)
+      return false;
     return _key == other._key || memcmp(_key, other._key, _len) == 0;
   }
 
@@ -182,13 +184,10 @@ inline std::ostream& operator<<(std::ostream& os, const RefCountKey& k) {
   return os;
 }
 
-
 } // namespace cache
 
 namespace std {
 template <> struct hash<cache::RefCountKey> {
-  size_t operator()(const cache::RefCountKey& k) const {
-    return k.hash();
-  }
+  size_t operator()(const cache::RefCountKey& k) const { return k.hash(); }
 };
-}
+} // namespace std
